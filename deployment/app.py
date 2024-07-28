@@ -18,7 +18,7 @@ def main():
     RetailGenAIAssistantStack(
         app,
         "RetailAIAssistantStack",
-        app_name='retail-genai-assistant',
+        app_name=config.app_name,
         config=config,
         env=env
     )

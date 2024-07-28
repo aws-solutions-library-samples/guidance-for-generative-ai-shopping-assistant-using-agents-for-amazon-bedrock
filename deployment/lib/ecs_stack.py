@@ -13,19 +13,19 @@ from aws_cdk import (
     aws_certificatemanager as acm,
     aws_route53 as route53,
     aws_route53_targets as targets,
+    aws_ssm as ssm,
     Duration,
     CfnOutput
 )
 from constructs import Construct
 
 class EcsStack(NestedStack):
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, user_pool= None, user_pool_client=None, user_pool_domain= None, application_dns_name=None, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, user_pool: str, user_pool_client: str, user_pool_domain: str, cognito_client_secret_param: str, application_dns_name: str = None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.application_dns_name = application_dns_name
         self.domain_name = config.domain_name if hasattr(config, 'domain_name') else None
         self.hosted_zone_id = config.hosted_zone_id if hasattr(config, 'hosted_zone_id') else None
-
 
         # Create VPC
         vpc = ec2.Vpc(self, f"{app_name}-vpc", max_azs=2)
@@ -41,7 +41,7 @@ class EcsStack(NestedStack):
 
         task_role.add_to_policy(iam.PolicyStatement(
             actions=["ssm:GetParameter"],
-            resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/*"]
+            resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/{self.region}/*"]
         ))
 
         # Create Task Definition
@@ -65,13 +65,21 @@ class EcsStack(NestedStack):
         container = task_definition.add_container(
             f"{app_name}-container",
             image=ecs.ContainerImage.from_docker_image_asset(docker_image),
-            logging=ecs.LogDrivers.aws_logs(
-                stream_prefix=f"ecs/{app_name}-{self.region}",
-                log_retention=logs.RetentionDays.TWO_WEEKS
-            ),
             environment={
                 "STREAMLIT_SERVER_PORT": "8501",
-                "STREAMLIT_SERVER_ADDRESS": "0.0.0.0"
+                "USER_POOL_ID": user_pool.user_pool_id,
+                "USER_POOL_CLIENT_ID": user_pool_client.user_pool_client_id,
+                "USER_POOL_DOMAIN": user_pool_domain.base_url()
+            },
+            secrets={
+                "USER_POOL_CLIENT_SECRET": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "ClientSecret",
+                        parameter_name= cognito_client_secret_param,
+                        version=1,
+                        simple_name= False
+                    )
+                )
             }
         )
 
@@ -102,6 +110,7 @@ class EcsStack(NestedStack):
             security_group=alb_security_group,
             load_balancer_name=f"retail-genai-{self.region}-alb"
         )
+        self.app_url= f"http://{load_balancer.load_balancer_dns_name}"
 
         # Allow traffic from ALB to ECS tasks
         ecs_security_group.add_ingress_rule(
@@ -111,6 +120,7 @@ class EcsStack(NestedStack):
         )
 
         certificate = None
+        # If domain exists in Route53 than create A record for the application dns name, certificate and ALB with HITTPs listener
         if self.domain_name and self.hosted_zone_id:
             # Create ACM certificate
             hosted_zone = route53.HostedZone.from_hosted_zone_attributes(
@@ -150,6 +160,8 @@ class EcsStack(NestedStack):
                 source_protocol=elb.ApplicationProtocol.HTTP,
                 target_protocol=elb.ApplicationProtocol.HTTPS
             )
+
+            self.app_url= f"https://{application_dns_name}"
         else:
             # Allow HTTP inbound to ALB
             alb_security_group.add_ingress_rule(
@@ -194,7 +206,7 @@ class EcsStack(NestedStack):
         )
 
         # Add Cognito authentication to ALB
-        if user_pool and user_pool_client and user_pool_domain:
+        if self.domain_name and user_pool and user_pool_client and user_pool_domain:
             fargate_service.listener.add_action(
                 "AuthenticateAction",
                 conditions=[elb.ListenerCondition.path_patterns(["/*"])],
@@ -207,4 +219,8 @@ class EcsStack(NestedStack):
                 )
             )
 
-        CfnOutput(self, "RetailGenAIAssistantAppURL", value=fargate_service.load_balancer.load_balancer_dns_name)
+        
+        # Update the container definition to include the APP_URL
+        task_definition.default_container.add_environment("APP_URL", self.app_url)
+
+        CfnOutput(self, f"{app_name}Url", value=self.app_url)

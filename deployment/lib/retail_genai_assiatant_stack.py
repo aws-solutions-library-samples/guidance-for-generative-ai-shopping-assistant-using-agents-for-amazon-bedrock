@@ -7,14 +7,27 @@ class RetailGenAIAssistantStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        if config.domain_name:
-            application_dns_name = f"{app_name}.{config.domain_name}"
+        self.application_dns_name = f"{app_name}.{config.domain_name}" if hasattr(config, 'domain_name') else None
 
-            # Create Cognito Stack
-            cognito_stack = CognitoStack(self, "CognitoStack", app_name, application_dns_name, config.default_user_email)
-            
-            # Create ECS Stack with Cognito Pool
-            ecs_stack = EcsStack(self, "EcsStack", app_name, config, cognito_stack.user_pool, cognito_stack.user_pool_client, cognito_stack.user_pool_domain, application_dns_name)
-        else:
-             # Create ECS Stack without Authentication
-            ecs_stack = EcsStack(self, "EcsStack", app_name, config)
+        # Create Cognito Stack
+        cognito_stack = CognitoStack(
+            self, 
+            "CognitoStack", 
+            app_name, 
+            config, 
+            application_dns_name=self.application_dns_name
+        )
+
+        # Create ECS Stack
+        ecs_stack = EcsStack(
+            self, 
+            "EcsStack", 
+            app_name, 
+            config,
+            user_pool=cognito_stack.user_pool,
+            user_pool_client=cognito_stack.user_pool_client,
+            user_pool_domain=cognito_stack.user_pool_domain,
+            cognito_client_secret_param=cognito_stack.client_secret_param.parameter_name,
+            application_dns_name=self.application_dns_name,
+
+        )
