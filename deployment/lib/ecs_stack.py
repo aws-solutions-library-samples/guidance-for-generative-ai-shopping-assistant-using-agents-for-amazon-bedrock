@@ -20,7 +20,9 @@ from aws_cdk import (
 from constructs import Construct
 
 class EcsStack(NestedStack):
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, user_pool: str, user_pool_client: str, user_pool_domain: str, cognito_client_secret_param: str, application_dns_name: str = None, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, 
+                 user_pool: str, user_pool_client: str, user_pool_domain: str, cognito_client_secret_param: str, 
+                 application_dns_name: str = None, alb_dns_name : str =None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.application_dns_name = application_dns_name
@@ -184,7 +186,8 @@ class EcsStack(NestedStack):
             certificate=certificate,
             load_balancer=load_balancer,
             security_groups=[ecs_security_group],
-            task_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            task_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            # task_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             service_name=f"{app_name}-{self.region}-service"
         )
 

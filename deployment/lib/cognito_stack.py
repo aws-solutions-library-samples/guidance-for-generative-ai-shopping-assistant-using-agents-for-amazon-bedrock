@@ -44,13 +44,20 @@ class CognitoStack(NestedStack):
         oauth_settings = None
         if application_dns_name:
             oauth_settings = cognito.OAuthSettings(
-                callback_urls=[f"https://{application_dns_name}/oauth2/idpresponse"],
-                logout_urls=[f"https://{application_dns_name}", "http://localhost:8501"],
+                callback_urls=[
+                        f"https://{application_dns_name}/oauth2/idpresponse", 
+                        f"https://{application_dns_name}", 
+                        "http://localhost:8501"
+                    ],
+                logout_urls=[
+                        f"https://{application_dns_name}", 
+                        "http://localhost:8501"
+                    ],
                 flows=cognito.OAuthFlows(authorization_code_grant=True),
                 scopes=[
                     cognito.OAuthScope.OPENID,
                     cognito.OAuthScope.EMAIL,
-                    cognito.OAuthScope.PHONE
+                    cognito.OAuthScope.PROFILE
                 ]
             )
 

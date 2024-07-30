@@ -1,49 +1,34 @@
 # app.py
 import streamlit as st
-from config import get_authenticator
-
-# Get the authenticator
-authenticator = get_authenticator()
+from utils.auth2 import authenticate_user, get_cognito_login_url, get_cognito_logout_url, logout
 
 
-## login auth with cognito    
-def login():
-    is_logged_in = authenticator.login()
-    #if not logged in, stop the app and keep in login page
-    if not is_logged_in:
-        st.stop()
+def main():
 
-## logout auth with cognito    
-def logout():
-    authenticator.logout()  
-    #redirect to login page
-    login()
+    st.title("Streamlit App with ALB and Cognito Authentication")
 
+    # Print headers
+    st.write("Headers:")
+    st.json(dict(st.context.headers))
 
-def display_ui():
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        if st.button("Logout"):
+    # Print cookies
+    st.write("Cookies:")
+    st.json(dict(st.context.cookies))
+
+    is_authenticated = authenticate_user()
+
+    if is_authenticated:
+        st.write("Hello, you are logged in!")
+        st.write("Authenticated User Info:")
+        st.write(st.session_state.user_profile)
+
+        if st.button('Logout'):
             logout()
-    
-    # Show the main content
-    with col1:
-        # Your app logic here
-        st.title("Welcome to the App")
-        user_name = authenticator.get_username()
-        st.write(f"Welcome, {user_name}!")
-        st.write("This is the protected content of your app")
-        
-        # Add more of your app content here
-        st.write("Here's some more protected content...")
+    else:
+        st.write("You are not authenticated.")
+        login_url = get_cognito_login_url()
+        st.markdown(f'<a href="{login_url}" target="_self"><button>Login with Cognito</button></a>', unsafe_allow_html=True)
+      
 
-
-
-
-# Main application logic
-if __name__ == "__main__":
-
-    # Auth with cognito and redirect to login page if not logged in
-    login()
-
-    display_ui()
+if __name__ == '__main__':
+    main()
