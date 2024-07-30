@@ -13,13 +13,18 @@ from aws_cdk import (
 from constructs import Construct
 
 class CognitoStack(NestedStack):
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, application_dns_name: str = None, **kwargs)  -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, application_dns_name: str = None, alb_dns_name : str =None, **kwargs)  -> None:
         super().__init__(scope, construct_id, **kwargs)
 
 
         self.default_user_email=config.default_user_email if hasattr(config, 'default_user_email') else None
         self.default_user_name=config.default_user_name if hasattr(config, 'default_user_name') else None
         self.default_temp_password=config.default_temp_password if hasattr(config, 'default_temp_password') else None
+
+        if application_dns_name:
+            self.app_url = f"https://{application_dns_name}"
+        else:
+            self.app_url = f"http://{alb_dns_name}.{self.region}.elb.amazonaws.com"
 
         self.user_pool = cognito.UserPool(
             self,
@@ -41,25 +46,23 @@ class CognitoStack(NestedStack):
             )
         )
 
-        oauth_settings = None
-        if application_dns_name:
-            oauth_settings = cognito.OAuthSettings(
-                callback_urls=[
-                        f"https://{application_dns_name}/oauth2/idpresponse", 
-                        f"https://{application_dns_name}", 
-                        "http://localhost:8501"
-                    ],
-                logout_urls=[
-                        f"https://{application_dns_name}", 
-                        "http://localhost:8501"
-                    ],
-                flows=cognito.OAuthFlows(authorization_code_grant=True),
-                scopes=[
-                    cognito.OAuthScope.OPENID,
-                    cognito.OAuthScope.EMAIL,
-                    cognito.OAuthScope.PROFILE
-                ]
-            )
+        oauth_settings = cognito.OAuthSettings(
+            callback_urls=[
+                    f"{self.app_url}/oauth2/idpresponse", 
+                    self.app_url,
+                    "http://localhost:8501"
+                ],
+            logout_urls=[
+                    self.app_url,
+                    "http://localhost:8501"
+                ],
+            flows=cognito.OAuthFlows(authorization_code_grant=True),
+            scopes=[
+                cognito.OAuthScope.OPENID,
+                cognito.OAuthScope.EMAIL,
+                cognito.OAuthScope.PROFILE
+            ]
+        )
 
         self.user_pool_client = self.user_pool.add_client(
             f"{app_name}-app-client",
@@ -76,13 +79,12 @@ class CognitoStack(NestedStack):
             ]
         )
         
-        if application_dns_name:
-            # Logout URLs and redirect URIs can't be set in CDK constructs natively ...yet
-            user_pool_client_cf: cognito.CfnUserPoolClient = self.user_pool_client.node.default_child
-            user_pool_client_cf.logout_ur_ls = [
-                    f"https://{application_dns_name}",
-                    "http://localhost:8501"
-                ]
+        # Logout URLs and redirect URIs can't be set in CDK constructs natively ...yet
+        user_pool_client_cf: cognito.CfnUserPoolClient = self.user_pool_client.node.default_child
+        user_pool_client_cf.logout_ur_ls = [
+                self.app_url,
+                "http://localhost:8501"
+            ]
 
         # Store client secret in Parameter Store as a simple string
         self.client_secret_param = ssm.StringParameter(

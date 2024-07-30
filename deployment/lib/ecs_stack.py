@@ -110,7 +110,7 @@ class EcsStack(NestedStack):
             vpc=vpc,
             internet_facing=True,
             security_group=alb_security_group,
-            load_balancer_name=f"retail-genai-{self.region}-alb"
+            load_balancer_name= alb_dns_name
         )
         self.app_url= f"http://{load_balancer.load_balancer_dns_name}"
 

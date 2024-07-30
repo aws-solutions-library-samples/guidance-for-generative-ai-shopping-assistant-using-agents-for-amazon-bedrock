@@ -1,3 +1,4 @@
+import hashlib
 from aws_cdk import Stack
 from constructs import Construct
 from lib.cognito_stack import CognitoStack
@@ -6,8 +7,11 @@ from lib.ecs_stack import EcsStack
 class RetailGenAIAssistantStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-
+        
         self.application_dns_name = f"{app_name}.{config.domain_name}" if hasattr(config, 'domain_name') else None
+
+        random_hash = hashlib.sha256(f"{config.app_name}-{self.region}".encode()).hexdigest()[:8]
+        self.alb_dns_name = f"{config.app_name}-{self.region}-alb"
 
         # Create Cognito Stack
         cognito_stack = CognitoStack(
@@ -15,7 +19,8 @@ class RetailGenAIAssistantStack(Stack):
             "CognitoStack", 
             app_name, 
             config, 
-            application_dns_name=self.application_dns_name
+            application_dns_name=self.application_dns_name,
+            alb_dns_name = self.alb_dns_name 
         )
 
         # Create ECS Stack
@@ -29,5 +34,5 @@ class RetailGenAIAssistantStack(Stack):
             user_pool_domain=cognito_stack.user_pool_domain,
             cognito_client_secret_param=cognito_stack.client_secret_param.parameter_name,
             application_dns_name=self.application_dns_name,
-
+            alb_dns_name = self.alb_dns_name 
         )
