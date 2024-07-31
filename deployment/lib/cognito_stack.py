@@ -8,7 +8,8 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_iam as iam,
     custom_resources as cr,
-    CfnOutput
+    CfnOutput,
+    RemovalPolicy
 )
 from constructs import Construct
 
@@ -36,7 +37,8 @@ class CognitoStack(NestedStack):
             standard_attributes=cognito.StandardAttributes(
                 email=cognito.StandardAttribute(mutable=True, required=True)
             ),
-            user_pool_name=f"{app_name}-{self.region}-user-pool"
+            user_pool_name=f"{app_name}-{self.region}-user-pool",
+            removal_policy= RemovalPolicy.DESTROY # Comment out this to retain your users on destroy stack
         )
 
         self.user_pool_domain = self.user_pool.add_domain(

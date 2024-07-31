@@ -3,7 +3,6 @@ from aws_cdk import Stack
 from constructs import Construct
 from lib.cognito_stack import CognitoStack
 from lib.ecs_stack import EcsStack
-from lib.cloudfront_stack import S3CloudFrontStack
 
 class RetailAIAssistantStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, **kwargs) -> None:
@@ -26,15 +25,6 @@ class RetailAIAssistantStack(Stack):
             alb_dns_name = self.alb_dns_name 
         )
 
-
-        # Create Cloudfront S3 Stack and upload images.
-        cloudfront_stack = S3CloudFrontStack(
-            self,
-            "S3CloudFrontStack", 
-            app_name, 
-            cloudfront_url_param = self.cloudfront_url_param
-        )
-         
         # Create ECS Stack
         ecs_stack = EcsStack(
             self, 

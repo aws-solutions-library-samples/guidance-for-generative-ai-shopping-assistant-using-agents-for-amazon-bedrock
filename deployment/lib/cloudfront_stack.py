@@ -28,7 +28,8 @@ class S3CloudFrontStack(Stack):
         self.bucket = s3.Bucket(
             self, 
             f"{app_name}-bucket",
-            removal_policy=RemovalPolicy.RETAIN, # Enable for production to avoid deletion of bucket 
+            # removal_policy=RemovalPolicy.RETAIN, # Enable for production to avoid deletion of bucket 
+            autoDeleteObjects = True, # Disable for production to avoid deletion of bucket when it is not empty
             bucket_name= f"{app_name}-{self.region}-{random_hash}"
         )
 
@@ -46,7 +47,8 @@ class S3CloudFrontStack(Stack):
         self.logs_bucket = s3.Bucket(
             self, 
             f"{app_name}-logs-bucket",
-            removal_policy=RemovalPolicy.RETAIN, 
+            # removal_policy=RemovalPolicy.RETAIN, 
+            autoDeleteObjects = True, # Disable for production to avoid deletion of bucket when it is not empty
             object_ownership=s3.ObjectOwnership.OBJECT_WRITER,
             bucket_name= f"{app_name}-{self.region}-{random_hash}-logs-bucket",  
         )
@@ -134,7 +136,7 @@ class S3CloudFrontStack(Stack):
         upload_images_lambda.grant_invoke(custom_resource_role)
 
         cr_physical_id = cr.PhysicalResourceId.of(f"{self.app_name}-upload-images")
-        cr.AwsCustomResource(
+        custom_resource = cr.AwsCustomResource(
             self,
             f"{self.app_name}-upload-images-custom-resource",
             on_create=cr.AwsSdkCall(
@@ -147,15 +149,15 @@ class S3CloudFrontStack(Stack):
                 }
             ),
             # Its better to run the lambda manually from console than update on every stack deployment
-            # on_update=cr.AwsSdkCall(
-            #     service="Lambda",
-            #     action="invoke",
-            #     physical_resource_id=cr_physical_id,
-            #     parameters={
-            #         "FunctionName": upload_images_lambda.function_name,
-            #         "InvocationType": "Event"
-            #     }
-            # ),
+            on_update=cr.AwsSdkCall(
+                service="Lambda",
+                action="invoke",
+                physical_resource_id=cr_physical_id,
+                parameters={
+                    "FunctionName": upload_images_lambda.function_name,
+                    "InvocationType": "Event"
+                }
+            ),
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(
                     actions=["lambda:InvokeFunction"],
@@ -164,5 +166,7 @@ class S3CloudFrontStack(Stack):
             ]),
             role=custom_resource_role
         )
+
+        custom_resource.node.add_dependency(upload_images_lambda)
 
 
