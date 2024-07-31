@@ -23,14 +23,15 @@ from constructs import Construct
 
 class EcsStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, 
-                 user_pool: str, user_pool_client: str, user_pool_domain: str, cognito_client_secret_param: str, 
+                 user_pool: str, user_pool_client: str, user_pool_domain: str, 
+                 cognito_client_secret_param: str, cloudfront_url_param: str,
                  application_dns_name: str = None, alb_dns_name : str =None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.application_dns_name = application_dns_name
         self.domain_name = config.domain_name if hasattr(config, 'domain_name') else None
         self.hosted_zone_id = config.hosted_zone_id if hasattr(config, 'hosted_zone_id') else None
-        random_hash = hashlib.sha256(f"{config.app_name}-{self.region}".encode()).hexdigest()[:8]
+        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
 
         # Create VPC
         vpc = ec2.Vpc(self, f"{app_name}-vpc", max_azs=2)
@@ -86,6 +87,14 @@ class EcsStack(NestedStack):
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "ClientSecret",
                         parameter_name= cognito_client_secret_param,
+                        version=1,
+                        simple_name= False
+                    )
+                ),
+                "CLOUDFRONT_URL": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "CloudfrontUrl",
+                        parameter_name= cloudfront_url_param,
                         version=1,
                         simple_name= False
                     )

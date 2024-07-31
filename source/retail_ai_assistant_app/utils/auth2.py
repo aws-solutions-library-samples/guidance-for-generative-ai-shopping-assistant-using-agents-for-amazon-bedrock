@@ -147,12 +147,6 @@ def authenticate_user():
     """Authenticate user based on ALB headers or OAuth2 flow."""
     initialize_session_vars()
 
-    # if 'logout_redirect' in st.session_state:
-    #     logout_url = st.session_state.logout_redirect
-    #     del st.session_state.logout_redirect
-    #     st.markdown(f'<meta http-equiv="refresh" content="0;url={logout_url}">', unsafe_allow_html=True)
-    #     return False
-
     # Validate logout state after redirecting from Cognito Login page using logout redirect_uri
     query_params = st.query_params.to_dict()
     if 'state' in query_params:
@@ -239,14 +233,10 @@ def logout():
     st.query_params.clear()
     logout_url = get_cognito_logout_url()
 
-    # expire_1hr =datetime.now() + timedelta(hours=1)
-    # cookie_manager.set('AuthState', 'logged_out', key='key_auth_state', expires_at=expire_1hr, path='/')
-
     # Invalidate AWSELBSessionCookie to perform successful logout on Cognito Hosted UI
     # expire =datetime.now() - timedelta(hours=1)
     # cookie_manager.set('AWSELBAuthSessionCookie-0', '', key='set_AWSELBAuthSessionCookie-0', expires_at=expire, path='/')
     # cookie_manager.set('AWSELBAuthSessionCookie-1', '', key='set_AWSELBAuthSessionCookie-1', expires_at=expire, path='/')
-    
     
     st.markdown(f'<meta http-equiv="refresh" content="0;url={logout_url}">', unsafe_allow_html=True)
     st.stop()
