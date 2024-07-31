@@ -6,6 +6,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 CLOUDFRONT_URL = os.environ['CLOUDFRONT_URL']
+IMAGE_URL= f"{CLOUDFRONT_URL}/images"
 
 # Load the products data
 with open('data/products.json') as f:
@@ -26,7 +27,7 @@ def create_response(status_code, body):
 def get_product_by_id(product_id):
     product = next((p for p in PRODUCTS if p['id'] == product_id), None)
     if product:
-        product['image'] = f"{CLOUDFRONT_URL}/{product['image']}"
+        product['image'] = f"{IMAGE_URL}/{product['image']}"
         # product['url'] = f"{APP_URL}/products/{product['id']}"
         return create_response(200, product)
     else:
@@ -35,7 +36,7 @@ def get_product_by_id(product_id):
 def get_featured_products():
     featured_products = [p for p in PRODUCTS if p.get('featured', True)]
     for product in featured_products:
-        product['image'] = f"{CLOUDFRONT_URL}/{product['image']}"
+        product['image'] = f"{IMAGE_URL}/{product['image']}"
         # product['url'] = f"{APP_URL}/products/{product['id']}"
     return create_response(200, featured_products)
 

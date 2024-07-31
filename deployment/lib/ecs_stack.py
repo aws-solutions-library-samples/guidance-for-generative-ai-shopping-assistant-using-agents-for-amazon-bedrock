@@ -24,7 +24,6 @@ from constructs import Construct
 class EcsStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, 
                  user_pool: str, user_pool_client: str, user_pool_domain: str, 
-                 cognito_client_secret_param: str, cloudfront_url_param: str,
                  application_dns_name: str = None, alb_dns_name : str =None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -51,58 +50,6 @@ class EcsStack(NestedStack):
             resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/*"]
         ))
 
-        # Create Task Definition
-        task_definition = ecs.FargateTaskDefinition(
-            self,
-            f"{app_name}-task-def",
-            cpu=512,
-            memory_limit_mib=1024,
-            task_role=task_role
-        )
-
-        # Define the Docker Image for our container
-        path = os.path.join(os.path.dirname(__file__), "..", "..", "source", "retail_ai_assistant_app")
-        docker_image = ecr_assets.DockerImageAsset(
-            self,
-             f"{app_name}-docker-image",
-            directory=path
-        )
-
-        # Add container to Task Definition
-        container = task_definition.add_container(
-            f"{app_name}-container",
-            image=ecs.ContainerImage.from_docker_image_asset(docker_image),
-            environment={
-                "STREAMLIT_SERVER_PORT": "8501",
-                "USER_POOL_ID": user_pool.user_pool_id,
-                "USER_POOL_CLIENT_ID": user_pool_client.user_pool_client_id,
-                "USER_POOL_DOMAIN": user_pool_domain.base_url()
-            },
-            logging=ecs.LogDrivers.aws_logs(
-                stream_prefix=f"ecs/{app_name}-{self.region}",
-                log_retention=logs.RetentionDays.TWO_WEEKS
-            ),
-            secrets={
-                "USER_POOL_CLIENT_SECRET": ecs.Secret.from_ssm_parameter(
-                    ssm.StringParameter.from_string_parameter_attributes(
-                        self, "ClientSecret",
-                        parameter_name= cognito_client_secret_param,
-                        version=1,
-                        simple_name= False
-                    )
-                ),
-                "CLOUDFRONT_URL": ecs.Secret.from_ssm_parameter(
-                    ssm.StringParameter.from_string_parameter_attributes(
-                        self, "CloudfrontUrl",
-                        parameter_name= cloudfront_url_param,
-                        version=1,
-                        simple_name= False
-                    )
-                )
-            }
-        )
-
-        container.add_port_mappings(ecs.PortMapping(container_port=8501))
 
         # Security Groups
         alb_security_group = ec2.SecurityGroup(
@@ -189,6 +136,67 @@ class EcsStack(NestedStack):
                 ec2.Port.tcp(80),
                 "Allow HTTP inbound"
             )
+        
+        # Create Task Definition
+        task_definition = ecs.FargateTaskDefinition(
+            self,
+            f"{app_name}-task-def",
+            cpu=512,
+            memory_limit_mib=1024,
+            task_role=task_role
+        )
+
+        # Define the Docker Image for our container
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "source", "retail_ai_assistant_app")
+        docker_image = ecr_assets.DockerImageAsset(
+            self,
+             f"{app_name}-docker-image",
+            directory=path
+        )
+
+        # Add container to Task Definition
+        container = task_definition.add_container(
+            f"{app_name}-container",
+            image=ecs.ContainerImage.from_docker_image_asset(docker_image),
+            environment={
+                "STREAMLIT_SERVER_PORT": "8501",
+                "USER_POOL_ID": user_pool.user_pool_id,
+                "USER_POOL_CLIENT_ID": user_pool_client.user_pool_client_id,
+                "USER_POOL_DOMAIN": user_pool_domain.base_url()
+            },
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix=f"ecs/{app_name}-{self.region}",
+                log_retention=logs.RetentionDays.TWO_WEEKS
+            ),
+            secrets={
+                "USER_POOL_CLIENT_SECRET": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "ClientSecret",
+                        parameter_name= config.cognitoclientsecret_param,
+                        version=1,
+                        simple_name= False
+                    )
+                ),
+                "IMAGE_URL": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "CloudfrontUrl",
+                        parameter_name= config.cloudfront_url_param,
+                        version=1,
+                        simple_name= False
+                    )
+                ),
+                 "API_URL": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "API_URL",
+                        parameter_name= config.apigateway_url_param,
+                        version=1,
+                        simple_name= False
+                    )
+                )
+            }
+        )
+
+        container.add_port_mappings(ecs.PortMapping(container_port=8501))
 
         # Create Fargate Service
         fargate_service = ecs_patterns.ApplicationLoadBalancedFargateService(
@@ -244,7 +252,15 @@ class EcsStack(NestedStack):
                 )
             )
 
-        
+        # Store Web app URL in Parameter Store as a simple string
+        ssm.StringParameter(
+            self,
+            f"{app_name}-app-url",
+            parameter_name= config.app_url_param,
+            string_value=self.app_url,
+            description="URL of the Web App"
+        )
+
         # Update the container definition to include the APP_URL
         task_definition.default_container.add_environment("APP_URL", self.app_url)
 

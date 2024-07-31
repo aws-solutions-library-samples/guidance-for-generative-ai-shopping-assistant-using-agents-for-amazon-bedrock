@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import os
 import aws_cdk as cdk
-from lib.retail_ai_assiatant_stack import RetailGenAIAssistantStack
+from lib.retail_ai_assiatant_stack import RetailAIAssistantStack
 from lib.product_service_stack import ProductServiceStack
+from lib.cloudfront_stack import S3CloudFrontStack
 from lib.config import get_config
 
 
@@ -16,7 +17,16 @@ def main():
 
     config = get_config()
 
-    retail_ai_stack = RetailGenAIAssistantStack(
+    # Create Cloudfront S3 Stack and upload images
+    cloudfront_images_stack = S3CloudFrontStack(
+        app,
+        "S3CloudFrontStack", 
+        app_name=config.app_name,
+        cloudfront_url_param = config.cloudfront_url_param,
+        env=env
+    )
+
+    retail_ai_stack = RetailAIAssistantStack(
         app,
         "RetailAIAssistantStack",
         app_name=config.app_name,
@@ -32,8 +42,11 @@ def main():
         env=env
     )
 
-    # Add dependency
-    #product_service_stack.add_dependency(retail_ai_stack)
+    # Add dependency for cloudfront stack to use cloudfront url param 
+    product_service_stack.add_dependency(cloudfront_images_stack)
+
+    # Add dependency for cloudfront stack to use cloudfront url and api gateway url from prodyuct service stack
+    retail_ai_stack.add_dependency(product_service_stack)
 
     app.synth()
 

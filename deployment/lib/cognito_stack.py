@@ -90,7 +90,7 @@ class CognitoStack(NestedStack):
         self.client_secret_param = ssm.StringParameter(
             self,
             f"{app_name}-client-secret",
-            parameter_name=f"/{app_name}/cognito-client-secret",
+            parameter_name= config.cognitoclientsecret_param,
             string_value=self.user_pool_client.user_pool_client_secret.unsafe_unwrap(),
             description="Cognito User Pool Client Secret"
         )
