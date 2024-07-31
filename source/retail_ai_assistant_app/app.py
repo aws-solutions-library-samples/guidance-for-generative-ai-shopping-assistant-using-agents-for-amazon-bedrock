@@ -1,9 +1,13 @@
 # app.py
 import streamlit as st
 from utils.auth2 import authenticate_user, get_cognito_login_url, get_cognito_logout_url, logout
+from utils.temp import csvtojson
 
 
 def main():
+
+    if st.button('csvtojson'):
+        csvtojson()
 
     st.title("Streamlit App with ALB and Cognito Authentication")
 
