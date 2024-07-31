@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import aws_cdk as cdk
-from lib.retail_genai_assiatant_stack import RetailGenAIAssistantStack
+from lib.retail_ai_assiatant_stack import RetailGenAIAssistantStack
 from lib.config import get_config
 
 

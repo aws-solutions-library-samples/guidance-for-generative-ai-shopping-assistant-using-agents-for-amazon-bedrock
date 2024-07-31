@@ -1,5 +1,6 @@
 import os
 import hashlib
+import datetime
 from aws_cdk import (
     NestedStack,
     aws_ec2 as ec2,
@@ -15,6 +16,7 @@ from aws_cdk import (
     aws_route53_targets as targets,
     aws_ssm as ssm,
     Duration,
+    RemovalPolicy,
     CfnOutput
 )
 from constructs import Construct
@@ -28,6 +30,7 @@ class EcsStack(NestedStack):
         self.application_dns_name = application_dns_name
         self.domain_name = config.domain_name if hasattr(config, 'domain_name') else None
         self.hosted_zone_id = config.hosted_zone_id if hasattr(config, 'hosted_zone_id') else None
+        random_hash = hashlib.sha256(f"{config.app_name}-{self.region}".encode()).hexdigest()[:8]
 
         # Create VPC
         vpc = ec2.Vpc(self, f"{app_name}-vpc", max_azs=2)
@@ -39,11 +42,12 @@ class EcsStack(NestedStack):
             self,
             f"{app_name}-task-role",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+            role_name=f"{app_name}-{random_hash}-task-role",
         )
 
         task_role.add_to_policy(iam.PolicyStatement(
             actions=["ssm:GetParameter"],
-            resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/{self.region}/*"]
+            resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/*"]
         ))
 
         # Create Task Definition
@@ -56,7 +60,7 @@ class EcsStack(NestedStack):
         )
 
         # Define the Docker Image for our container
-        path = os.path.join(os.path.dirname(__file__), "..", "..", "source", "retail_genai_assistant_app")
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "source", "retail_ai_assistant_app")
         docker_image = ecr_assets.DockerImageAsset(
             self,
              f"{app_name}-docker-image",
@@ -73,6 +77,10 @@ class EcsStack(NestedStack):
                 "USER_POOL_CLIENT_ID": user_pool_client.user_pool_client_id,
                 "USER_POOL_DOMAIN": user_pool_domain.base_url()
             },
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix=f"ecs/{app_name}-{self.region}",
+                log_retention=logs.RetentionDays.TWO_WEEKS
+            ),
             secrets={
                 "USER_POOL_CLIENT_SECRET": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
@@ -93,14 +101,15 @@ class EcsStack(NestedStack):
             "AlbSecurityGroup",
             vpc=vpc,
             description="Security group for the Application Load Balancer",
-            security_group_name=f"{app_name}-alb-sg-{self.region}"
+            security_group_name=f"{app_name}-{self.region}-alb-sg"
         )
 
         ecs_security_group = ec2.SecurityGroup(
             self,
             "EcsSecurityGroup",
             vpc=vpc,
-            description="Security group for the ECS service"
+            description="Security group for the ECS service",
+            security_group_name=f"{app_name}-{self.region}-ecs-sg"
         )
 
         # Create ALB
@@ -143,7 +152,7 @@ class EcsStack(NestedStack):
             certificate = acm.Certificate(
                 self, 
                 f"{app_name}-certificate",
-                certificate_name=f"{app_name}-certificate",
+                certificate_name=f"{app_name}-{self.region}-certificate",
                 domain_name=self.application_dns_name,
                 validation=acm.CertificateValidation.from_dns(hosted_zone)
             )
@@ -180,15 +189,19 @@ class EcsStack(NestedStack):
             task_definition=task_definition,
             desired_count=config.number_of_tasks,
             public_load_balancer=True,
-            assign_public_ip=False,
+            assign_public_ip=True, # Set this to False if deploying in private subnet
             listener_port=443 if certificate else 80,
             protocol=elb.ApplicationProtocol.HTTPS if certificate else elb.ApplicationProtocol.HTTP,
             certificate=certificate,
             load_balancer=load_balancer,
             security_groups=[ecs_security_group],
             task_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            # task_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
-            service_name=f"{app_name}-{self.region}-service"
+            # task_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS), #Recommended for production setup to place app in private subnet
+            circuit_breaker=ecs.DeploymentCircuitBreaker(
+                enable=True,
+                rollback=True
+            ), # task fail the deployment if the ecs task fails to start
+            service_name=f"{app_name}-{self.region}-service",
         )
 
         # Setup AutoScaling policy

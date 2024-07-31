@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-WORKDIR /retail_genai_assistant_app
+WORKDIR /retail_ai_assistant_app
 
 RUN rm -rf /var/lib/apt/lists/*
 
