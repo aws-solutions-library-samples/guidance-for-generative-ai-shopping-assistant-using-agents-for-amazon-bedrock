@@ -1,0 +1,402 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "AnyCompanyCommerce Shopping Agent API",
+      "description": "API for the AnyCompanyCommerce Shopping Agent to place orders and retrieve product inventory information.",
+      "version": "1.0.0"
+    },
+    "paths": {
+      "/orders": {
+        "post": {
+          "summary": "Create a new order for a customer",
+          "description": "Creates a new order with the provided order details and customer information.",
+          "operationId": "createOrder",
+          "requestBody": {
+            "description": "Order details and customer information",
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOrderRequest"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Successful response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CreateOrderResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/orders/{orderId}/sendEmail": {
+        "post": {
+          "summary": "Send order confirmation email",
+          "description": "Sends an order confirmation email to the customer with the order details.",
+          "operationId": "sendOrderConfirmationEmail",
+          "parameters": [
+            {
+              "name": "orderId",
+              "in": "path",
+              "description": "The ID of the order",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "description": "Email details",
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendEmailRequest"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Successful response",
+              "content": {
+                "text/plain": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/products/{productId}/inventory": {
+        "get": {
+          "summary": "Get product inventory details by product ID",
+          "description": "Retrieves the inventory details for a specific product by its ID.",
+          "operationId": "getProductInventory",
+          "parameters": [
+            {
+              "name": "productId",
+              "in": "path",
+              "description": "The ID of the product",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "CreateOrderRequest": {
+            "type": "object",
+            "required": [
+              "email",
+              "orderItems",
+              "firstName",
+              "lastName",
+              "address",
+              "city",
+              "zipCode",
+              "state",
+              "country"
+            ],
+            "properties": {
+              "email": {
+                "type": "string",
+                "description": "The email address of the customer"
+              },
+              "orderItems": {
+                "type": "array",
+                "description": "The list of order items",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "productId": {
+                      "type": "string",
+                      "description": "The ID of the product"
+                    },
+                    "productName": {
+                      "type": "string",
+                      "description": "The name of the product"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "description": "The quantity of the product"
+                    },
+                    "price": {
+                      "type": "number",
+                      "description": "The price of the product"
+                    }
+                  },
+                  "required": [
+                    "productId",
+                    "productName",
+                    "quantity",
+                    "price"
+                  ]
+                }
+              },
+              "firstName": {
+                "type": "string",
+                "description": "The first name of the customer"
+              },
+              "lastName": {
+                "type": "string",
+                "description": "The last name of the customer"
+              },
+              "address": {
+                "type": "string",
+                "description": "The shipping address"
+              },
+              "city": {
+                "type": "string",
+                "description": "The city"
+              },
+              "zipCode": {
+                "type": "string",
+                "description": "The zip code"
+              },
+              "state": {
+                "type": "string",
+                "description": "The state"
+              },
+              "country": {
+                "type": "string",
+                "description": "The country"
+              }
+            }
+        },
+        "Order": {
+          "type": "object",
+          "description": "Details of an order",
+          "required": [
+            "items",
+            "shippingAddress"
+          ],
+          "properties": {
+            "items": {
+              "type": "array",
+              "description": "The list of order items",
+              "items": {
+                "$ref": "#/components/schemas/OrderItem"
+              }
+            },
+            "shippingAddress": {
+              "$ref": "#/components/schemas/ShippingAddress"
+            }
+          }
+        },
+        "OrderItem": {
+          "type": "object",
+          "required": [
+            "productId",
+            "productName",
+            "quantity",
+            "price"
+          ],
+          "properties": {
+            "productId": {
+              "type": "string",
+              "description": "The ID of the product"
+            },
+            "productName": {
+              "type": "string",
+              "description": "The name of the product"
+            },
+            "quantity": {
+              "type": "integer",
+              "description": "The quantity of the product"
+            },
+            "price": {
+              "type": "number",
+              "description": "The price of the product"
+            }
+          }
+        },
+        "ShippingAddress": {
+          "type": "object",
+          "required": [
+            "firstName",
+            "lastName",
+            "address",
+            "city",
+            "zipCode",
+            "state",
+            "country"
+          ],
+          "properties": {
+            "firstName": {
+              "type": "string",
+              "description": "The first name of the customer"
+            },
+            "lastName": {
+              "type": "string",
+              "description": "The last name of the customer"
+            },
+            "address": {
+              "type": "string",
+              "description": "The shipping address"
+            },
+            "city": {
+              "type": "string",
+              "description": "The city"
+            },
+            "zipCode": {
+              "type": "string",
+              "description": "The zip code"
+            },
+            "state": {
+              "type": "string",
+              "description": "The state"
+            },
+            "country": {
+              "type": "string",
+              "description": "The country"
+            }
+          }
+        },
+        "CreateOrderResponse": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "description": "The ID of the created order"
+            },
+            "orderDetails": {
+              "$ref": "#/components/schemas/OrderDetails"
+            }
+          }
+        },
+        "OrderDetails": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "The ID of the order"
+            },
+            "email": {
+              "type": "string",
+              "description": "The email address of the customer"
+            },
+            "order": {
+              "$ref": "#/components/schemas/Order"
+            },
+            "totalAmount": {
+              "type": "number",
+              "description": "The total amount of the order"
+            }
+          }
+        },
+        "SendEmailRequest": {
+          "type": "object",
+          "required": [
+            "email",
+            "emailBody"
+          ],
+          "properties": {
+            "email": {
+              "type": "string",
+              "description": "The email address of the customer"
+            },
+            "emailBody": {
+              "type": "string",
+              "description": "The formatted email body"
+            }
+          }
+        },
+        "ProductRequestBody": {
+          "type": "object",
+          "properties": {
+            "sku": {
+              "type": "string",
+              "description": "The SKU of the product"
+            },
+            "name": {
+              "type": "string",
+              "description": "The name of the product"
+            },
+            "description": {
+              "type": "string",
+              "description": "The description of the product"
+            },
+            "category": {
+              "type": "string",
+              "description": "The category of the product"
+            },
+            "style": {
+              "type": "string",
+              "description": "The style of the product"
+            },
+            "price": {
+              "type": "number",
+              "description": "The price of the product"
+            },
+            "featured": {
+              "type": "boolean",
+              "description": "Whether the product is featured or not",
+              "enum": [true, false]
+            },
+            "gender_affinity": {
+              "type": "string",
+              "description": "The gender affinity of the product"
+            },
+            "image": {
+              "type": "string",
+              "description": "The URL of the product image"
+            },
+            "current_stock": {
+              "type": "integer",
+              "description": "The current stock of the product"
+            }
+          }
+        },
+        "Product": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ProductRequestBody"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The ID of the product"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "The URL of the product"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+  
