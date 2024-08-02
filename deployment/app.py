@@ -4,6 +4,7 @@ import aws_cdk as cdk
 from lib.retail_ai_assiatant_stack import RetailAIAssistantStack
 from lib.product_service_stack import ProductServiceStack
 from lib.cloudfront_stack import S3CloudFrontStack
+from lib.shopping_assistant_stack import ShoppingAssistantStack
 from lib.config import get_config
 
 
@@ -37,6 +38,14 @@ def main():
     product_service_stack = ProductServiceStack(
         app,
         "ProductServiceStack",
+        app_name=config.app_name,
+        config=config,
+        env=env
+    )
+
+    shopping_agent_stack = ShoppingAssistantStack(
+        app,
+        "ShoppingAssistantStack",
         app_name=config.app_name,
         config=config,
         env=env

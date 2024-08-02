@@ -15,6 +15,9 @@ class Config:
         self.apigateway_url_param = f"/{self.app_name}/apigateway-url"
         self.cognitoclientsecret_param = f"/{self.app_name}/cognito-client-secret"
         self.app_url_param = ''f"/{self.app_name}/app-url"
+        self.product_catalog_kb_id_param = ''f"/{self.app_name}/product-catalog-kb-id"
+        self.shopping_agent_id_param = ''f"/{self.app_name}/bedrock-shopping-agent-id"
+        self.shopping_agent_alias_id_param = ''f"/{self.app_name}/bedrock-shopping-agent-alias-id"
 
 def get_config():
     return Config()

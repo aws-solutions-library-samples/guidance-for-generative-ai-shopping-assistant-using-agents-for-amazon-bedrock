@@ -4,7 +4,7 @@ import os
 import uuid
 
 # Get the API Gateway URL from the environment variable
-apigateway_url = os.environ.get('API_GATEWAY_URL', '')
+apigateway_url = os.environ.get('API_URL', '')
 
 headers = {
     'Content-Type': 'application/json'

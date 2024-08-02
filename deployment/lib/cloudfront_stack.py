@@ -28,8 +28,8 @@ class S3CloudFrontStack(Stack):
         self.bucket = s3.Bucket(
             self, 
             f"{app_name}-bucket",
-            # removal_policy=RemovalPolicy.RETAIN, # Enable for production to avoid deletion of bucket 
-            autoDeleteObjects = True, # Disable for production to avoid deletion of bucket when it is not empty
+            removal_policy=RemovalPolicy.DESTROY, # RETAIN for production to avoid deletion of bucket 
+            auto_delete_objects = True, # Disable for production to avoid deletion of bucket when it is not empty
             bucket_name= f"{app_name}-{self.region}-{random_hash}"
         )
 
@@ -47,8 +47,8 @@ class S3CloudFrontStack(Stack):
         self.logs_bucket = s3.Bucket(
             self, 
             f"{app_name}-logs-bucket",
-            # removal_policy=RemovalPolicy.RETAIN, 
-            autoDeleteObjects = True, # Disable for production to avoid deletion of bucket when it is not empty
+            removal_policy=RemovalPolicy.DESTROY, 
+            auto_delete_objects = True, # Disable for production to avoid deletion of bucket when it is not empty
             object_ownership=s3.ObjectOwnership.OBJECT_WRITER,
             bucket_name= f"{app_name}-{self.region}-{random_hash}-logs-bucket",  
         )
