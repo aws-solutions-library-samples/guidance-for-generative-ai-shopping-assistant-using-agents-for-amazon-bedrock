@@ -1,5 +1,5 @@
 import hashlib
-import json
+import os
 from constructs import Construct
 from lib.bedrock_shopping_agent_stack import BedrockShoppingAgentStack
 from lib.bedrock_product_kb_stack import BedrockProductKnowledgeBaseStack
@@ -10,7 +10,10 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_s3_deployment as s3deploy,
     custom_resources as cr,
-    RemovalPolicy
+    aws_lambda as lambda_,
+    aws_ssm as ssm,
+    RemovalPolicy,
+    Duration
 )
 
 class RetailShoppingAgentStack(Stack):
@@ -28,7 +31,7 @@ class RetailShoppingAgentStack(Stack):
         )
 
         # Copy KB Files to ingest
-        s3deploy.BucketDeployment(self, "UploadKBFiles",
+        s3_upload_kb_files = s3deploy.BucketDeployment(self, "UploadKBFiles",
             sources=[s3deploy.Source.asset("./bedrock_agent/knowledge_bases")],
             destination_bucket=data_source_bucket
         )
@@ -59,8 +62,14 @@ class RetailShoppingAgentStack(Stack):
             "BedrockShoppingAgentStack",
             app_name=config.app_name,
             config=config,
-            product_kb_id=product_catalog_kb_stack.product_knowledge_base_id
+            product_kb_id=product_catalog_kb_stack.knowledge_base_id
         )
+
+        upload_product_catalog_kb_cr = self.upload_product_catalog_kb(data_source_bucket, product_catalog_kb_stack.knowledge_base_id, product_catalog_kb_stack.data_source_id, config)
+
+        s3_upload_kb_files.node.add_dependency(data_source_bucket)
+        upload_product_catalog_kb_cr.node.add_dependency(s3_upload_kb_files)
+        upload_product_catalog_kb_cr.node.add_dependency(product_catalog_kb_stack)
 
         product_catalog_kb_stack.node.add_dependency(aoss_stack)
         product_catalog_kb_stack.node.add_dependency(data_source_bucket)
@@ -68,5 +77,74 @@ class RetailShoppingAgentStack(Stack):
         shopping_agent_stack.node.add_dependency(product_catalog_kb_stack)
     
    
+    def upload_product_catalog_kb(self, data_source_bucket, knowledge_base_id, data_source_id, config):
+
+        # Create Lambda function to process product catalog
+        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_catalog_kb")
+
+        process_product_catalog_lambda = lambda_.Function(
+            self, "ProcessProductCatalogToS3Lambda",
+            function_name=f"{config.app_name}-upload-product-catalog-kb",
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler="index.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
+            environment={
+                "CLOUDFRONT_URL": ssm.StringParameter.value_for_string_parameter(
+                    self, config.cloudfront_url_param
+                ),
+                "APP_URL": ssm.StringParameter.value_for_string_parameter(
+                    self, config.app_url_param
+                ),
+                "BUCKET_NAME": data_source_bucket.bucket_name,
+                "BUCKET_PREFIX": config.product_vector_index_name,
+                "KNOWLEDGE_BASE_ID": knowledge_base_id,
+                "DATA_SOURCE_ID": data_source_id
+            },
+            memory_size=1024,
+            timeout=Duration.minutes(5)
+        )
+
+        # Grant Lambda function read/write permissions to the S3 bucket
+        data_source_bucket.grant_read_write(process_product_catalog_lambda)
+
+        process_product_catalog_lambda.add_to_role_policy(iam.PolicyStatement(
+            actions=[
+                "bedrock:StartIngestionJob"
+            ],
+            resources=[f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/{knowledge_base_id}"]
+        ))
+
+        # Create custom resource to invoke the Lambda function
+        process_catalog_cr = cr.AwsCustomResource(
+            self, "UploadProductCatalogToS3CustomResource",
+            on_create=cr.AwsSdkCall(
+                service="Lambda",
+                action="invoke",
+                parameters={
+                    "FunctionName": process_product_catalog_lambda.function_name,
+                    "InvocationType": "Event"
+                },
+                physical_resource_id=cr.PhysicalResourceId.of("UploadProductCatalogToS3")
+            ),
+            # The below action will upload product files and start ingestion job on every CDK update
+            # It is better to run the Lambda manually from the AWS console if needed.
+            # on_update=cr.AwsSdkCall(
+            #     service="Lambda",
+            #     action="invoke",
+            #     parameters={
+            #         "FunctionName": process_product_catalog_lambda.function_name,
+            #         "InvocationType": "Event"
+            #     },
+            #     physical_resource_id=cr.PhysicalResourceId.of("UploadProductCatalogToS3")
+            # ),
+            policy=cr.AwsCustomResourcePolicy.from_statements([
+                iam.PolicyStatement(
+                    actions=["lambda:InvokeFunction"],
+                    resources=[process_product_catalog_lambda.function_arn]
+                )
+            ])
+        )
+
+        return process_catalog_cr
 
         

@@ -80,13 +80,13 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
             )
         )
 
-        self.product_knowledge_base_id = product_catalog_knowledge_base.attr_knowledge_base_id
+        self.knowledge_base_id = product_catalog_knowledge_base.attr_knowledge_base_id
 
         # Create S3 DataSource for Product Knowledge Base
         product_catalog_data_source=bedrock.CfnDataSource(
             self, "ProductCatalogS3DataSource",
             name=f"{self.app_name}-product-catalog-s3-datasource",
-            knowledge_base_id= self.product_knowledge_base_id,
+            knowledge_base_id= self.knowledge_base_id,
             data_source_configuration = bedrock.CfnDataSource.DataSourceConfigurationProperty(
                 s3_configuration=bedrock.CfnDataSource.S3DataSourceConfigurationProperty(
                     bucket_arn=data_source_bucket.bucket_arn,
@@ -95,6 +95,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                 type="S3"
             )
         )
+        self.data_source_id = product_catalog_data_source.attr_data_source_id
 
         aoss_index.node.add_dependency(data_access_policy)
         product_catalog_knowledge_base.node.add_dependency(aoss_index)
@@ -104,11 +105,11 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         ssm.StringParameter(
             self, f"ProductKnowledgeBaseIdParameter",
             parameter_name=config.product_catalog_kb_id_param,
-            string_value=self.product_knowledge_base_id
+            string_value=self.knowledge_base_id
         )
 
         # Output the KB details
-        CfnOutput(self, f"{product_catalog_knowledge_base.name}-id", value=self.product_knowledge_base_id)
+        CfnOutput(self, f"{product_catalog_knowledge_base.name}-id", value=self.knowledge_base_id)
 
     def add_aoss_access_policiy(self, opensearch_collection_arn, opensearch_collection_name, index_name, iam_role):
         
