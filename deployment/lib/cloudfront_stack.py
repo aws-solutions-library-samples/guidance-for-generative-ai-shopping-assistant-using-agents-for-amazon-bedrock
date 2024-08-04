@@ -94,7 +94,7 @@ class S3CloudFrontStack(Stack):
         self.lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_images")
         upload_images_lambda = lambda_.Function(
             self,
-            f"{self.app_name}-upload-product-images",
+            "UploadProductImages",
             function_name=f"{self.app_name}-upload-product-images",
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler="index.handler",
@@ -135,28 +135,28 @@ class S3CloudFrontStack(Stack):
         # Grant the custom resource role permission to invoke the Lambda function
         upload_images_lambda.grant_invoke(custom_resource_role)
 
-        cr_physical_id = cr.PhysicalResourceId.of(f"{self.app_name}-upload-product-images")
+        cr_physical_id = cr.PhysicalResourceId.of("UploadProductImages")
         custom_resource = cr.AwsCustomResource(
             self,
-            f"{self.app_name}-upload-images-custom-resource",
+            f"UploadProductImagesCustomResource",
             on_create=cr.AwsSdkCall(
                 service="Lambda",
                 action="invoke",
-                physical_resource_id=cr_physical_id,
                 parameters={
                     "FunctionName": upload_images_lambda.function_name,
                     "InvocationType": "Event"
-                }
+                },
+                physical_resource_id= cr_physical_id
             ),
             # Its better to run the lambda manually from console than update on every stack deployment
             # on_update=cr.AwsSdkCall(
             #     service="Lambda",
             #     action="invoke",
-            #     physical_resource_id=cr_physical_id,
             #     parameters={
             #         "FunctionName": upload_images_lambda.function_name,
             #         "InvocationType": "Event"
-            #     }
+            #     },
+            #     physical_resource_id= cr_physical_id
             # ),
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(

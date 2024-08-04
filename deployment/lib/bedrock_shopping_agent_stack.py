@@ -28,7 +28,7 @@ class BedrockShoppingAgentStack(NestedStack):
         shopping_agent_path = os.path.join(os.path.dirname(__file__), "..", "bedrock_agent", "shopping_agent")
 
         # Read orchestration advanced prompt JSON
-        with open(f"{shopping_agent_path}/prompt_templates/orchestration_template.json") as f:
+        with open(f"{shopping_agent_path}/prompt_templates/orchestration_template.txt") as f:
             orchestration_prompt = f.read()
         
         # Read orchestration advanced prompt JSON

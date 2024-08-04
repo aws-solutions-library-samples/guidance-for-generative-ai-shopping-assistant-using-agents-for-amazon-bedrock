@@ -65,7 +65,7 @@ class RetailShoppingAgentStack(Stack):
             product_kb_id=product_catalog_kb_stack.knowledge_base_id
         )
 
-        upload_product_catalog_kb_cr = self.upload_product_catalog_kb(data_source_bucket, product_catalog_kb_stack.knowledge_base_id, product_catalog_kb_stack.data_source_id, config)
+        upload_product_catalog_kb_cr = self.upload_product_catalog_and_sync_kb(data_source_bucket, product_catalog_kb_stack.knowledge_base_id, product_catalog_kb_stack.data_source_id, config)
 
         s3_upload_kb_files.node.add_dependency(data_source_bucket)
         upload_product_catalog_kb_cr.node.add_dependency(s3_upload_kb_files)
@@ -77,14 +77,14 @@ class RetailShoppingAgentStack(Stack):
         shopping_agent_stack.node.add_dependency(product_catalog_kb_stack)
     
    
-    def upload_product_catalog_kb(self, data_source_bucket, knowledge_base_id, data_source_id, config):
+    def upload_product_catalog_and_sync_kb(self, data_source_bucket, knowledge_base_id, data_source_id, config):
 
         # Create Lambda function to process product catalog
-        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_catalog_kb")
+        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_catalog_and_sync_kb")
 
         process_product_catalog_lambda = lambda_.Function(
-            self, "ProcessProductCatalogToS3Lambda",
-            function_name=f"{config.app_name}-upload-product-catalog-kb",
+            self, "UploadAndSyncProductCatalogToKBLambda",
+            function_name=f"{config.app_name}-upload-product-catalog-and-sync-kb",
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler="index.handler",
             code=lambda_.Code.from_asset(lambda_code_path),
@@ -114,9 +114,10 @@ class RetailShoppingAgentStack(Stack):
             resources=[f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/{knowledge_base_id}"]
         ))
 
+        cr_physical_id = cr.PhysicalResourceId.of("UploadAndSyncProductCatalogToKB")
         # Create custom resource to invoke the Lambda function
         process_catalog_cr = cr.AwsCustomResource(
-            self, "UploadProductCatalogToS3CustomResource",
+            self, "UploadAndSyncProductCatalogToKBCustomResource",
             on_create=cr.AwsSdkCall(
                 service="Lambda",
                 action="invoke",
@@ -124,19 +125,19 @@ class RetailShoppingAgentStack(Stack):
                     "FunctionName": process_product_catalog_lambda.function_name,
                     "InvocationType": "Event"
                 },
-                physical_resource_id=cr.PhysicalResourceId.of("UploadProductCatalogToS3")
+                physical_resource_id = cr_physical_id
             ),
             # The below action will upload product files and start ingestion job on every CDK update
             # It is better to run the Lambda manually from the AWS console if needed.
-            # on_update=cr.AwsSdkCall(
-            #     service="Lambda",
-            #     action="invoke",
-            #     parameters={
-            #         "FunctionName": process_product_catalog_lambda.function_name,
-            #         "InvocationType": "Event"
-            #     },
-            #     physical_resource_id=cr.PhysicalResourceId.of("UploadProductCatalogToS3")
-            # ),
+            on_update=cr.AwsSdkCall(
+                service="Lambda",
+                action="invoke",
+                parameters={
+                    "FunctionName": process_product_catalog_lambda.function_name,
+                    "InvocationType": "Event"
+                },
+                physical_resource_id= cr_physical_id
+            ),
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(
                     actions=["lambda:InvokeFunction"],

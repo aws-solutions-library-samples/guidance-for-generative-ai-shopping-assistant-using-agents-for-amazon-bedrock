@@ -190,18 +190,10 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         )
 
         # Grant the Lambda function permissions to access OpenSearch
-        # create_index_lambda.add_to_role_policy(iam.PolicyStatement(
-        #     actions=[
-        #         "aoss:CreateIndex",
-        #         "aoss:UpdateIndex",
-        #         "aoss:DescribeIndex"
-        #     ],
-        #     resources=[opensearch_collection_arn]
-        # ))
-
         aoss_data_access_policy_lambda = self.add_aoss_access_policiy( opensearch_collection_arn, opensearch_collection_name, 'index-cr', create_index_lambda.role) 
 
         # Create custom resource to create OpenSearch index
+        cr_physical_id = cr.PhysicalResourceId.of("CreateOpenSearchIndex")
         create_index_cr = cr.AwsCustomResource(
             self, "CreateOpenSearchIndexCustomResource",
             on_create=cr.AwsSdkCall(
@@ -211,7 +203,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                     "FunctionName": create_index_lambda.function_name,
                     "InvocationType": "RequestResponse"
                 },
-                physical_resource_id=cr.PhysicalResourceId.of(create_index_lambda.function_arn)
+                physical_resource_id= cr_physical_id
             ),
             on_update=cr.AwsSdkCall(
                 service="Lambda",
@@ -220,7 +212,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                     "FunctionName": create_index_lambda.function_name,
                     "InvocationType": "RequestResponse"
                 },
-                physical_resource_id=cr.PhysicalResourceId.of(create_index_lambda.function_arn)
+                physical_resource_id= cr_physical_id
             ),
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(

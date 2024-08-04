@@ -110,11 +110,11 @@ class CognitoStack(NestedStack):
 
     def create_demo_user(self, app_name: str):
 
-        lambda_code_path = os.path.join(os.path.dirname(__file__), "..",  "lambda", "create_user")
+        lambda_code_path = os.path.join(os.path.dirname(__file__), "..",  "lambda", "create_cognito_user")
         create_user_lambda = lambda_.Function(
             self,
-            f"{app_name}-create-user-lambda",
-            function_name=f"{app_name}-create-user-lambda",
+            "CreateCognitoUser",
+            function_name=f"{app_name}-create-cognito-user",
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler="index.handler",
             code=lambda_.Code.from_asset(lambda_code_path),
@@ -145,27 +145,27 @@ class CognitoStack(NestedStack):
         # Grant the custom resource role permission to invoke the Lambda function
         create_user_lambda.grant_invoke(custom_resource_role)
 
-        cr_physical_id = cr.PhysicalResourceId.of(f"{app_name}-create-user")
+        cr_physical_id = cr.PhysicalResourceId.of("CreateCognitoUser")
         cr.AwsCustomResource(
             self,
-            f"{app_name}-create-user-custom-resource",
+            "CreateCognitoUserCustomResource",
             on_create=cr.AwsSdkCall(
                 service="Lambda",
                 action="invoke",
-                physical_resource_id=cr_physical_id,
                 parameters={
                     "FunctionName": create_user_lambda.function_name,
                     "InvocationType": "Event"
-                }
+                },
+                physical_resource_id= cr_physical_id
             ),
             on_update=cr.AwsSdkCall(
                 service="Lambda",
                 action="invoke",
-                physical_resource_id= cr_physical_id,
                 parameters={
                     "FunctionName": create_user_lambda.function_name,
                     "InvocationType": "Event"
-                }
+                },
+                physical_resource_id= cr_physical_id
             ),
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(

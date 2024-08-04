@@ -13,18 +13,18 @@ def upload_product_files(source_bucket, cloudfront_url, app_url, bucket_prefix, 
     logger.info(f"Starting to upload product files to bucket: {source_bucket}")
     for product in products:
         product_text = f"""id: {product['id']}
-            name: {product['name']}
-            description: {product['description']}
-            category: {product['category']}
-            style: {product['style']}
-            aliases: {product['aliases']}
-            price: {product['price']}
-            promoted: {product['promoted']}
-            featured: {product['featured']}
-            gender_affinity: {product['gender_affinity']}
-            image: {cloudfront_url}/images/{product['image']}
-            url: {app_url}/product/?product_id={product['id']}
-            """
+name: {product['name']}
+description: {product['description']}
+category: {product['category']}
+style: {product['style']}
+aliases: {product['aliases']}
+price: {product['price']}
+promoted: {product['promoted']}
+featured: {product['featured']}
+gender_affinity: {product['gender_affinity']}
+image: {cloudfront_url}/images/{product['image']}
+url: {app_url}/product/?product_id={product['id']}
+"""
         s3.put_object(
             Bucket=source_bucket,
             Key=f"{bucket_prefix}/{product['id']}.txt",

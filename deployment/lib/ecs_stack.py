@@ -11,6 +11,7 @@ from aws_cdk import (
     aws_elasticloadbalancingv2 as elb,
     aws_elasticloadbalancingv2_actions as elb_actions,
     aws_ecr_assets as ecr_assets,
+    custom_resources as cr,
     aws_certificatemanager as acm,
     aws_route53 as route53,
     aws_route53_targets as targets,
@@ -23,7 +24,7 @@ from constructs import Construct
 
 class EcsStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, 
-                 user_pool: str, user_pool_client: str, user_pool_domain: str, 
+                 user_pool, user_pool_client, user_pool_domain: str, 
                  application_dns_name: str = None, alb_dns_name : str =None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -252,6 +253,9 @@ class EcsStack(NestedStack):
                 )
             )
 
+            update_cognito_oauth_cr = self.update_cognito_oauth_settings(self.app_url, user_pool.user_pool_id, user_pool_client.user_pool_client_id)   
+            update_cognito_oauth_cr.node.add_dependency(fargate_service) 
+
         # Store Web app URL in Parameter Store as a simple string
         ssm.StringParameter(
             self,
@@ -265,3 +269,38 @@ class EcsStack(NestedStack):
         task_definition.default_container.add_environment("APP_URL", self.app_url)
 
         CfnOutput(self, f"{app_name}Url", value=self.app_url)
+
+    def update_cognito_oauth_settings(self, app_url, user_pool_id, client_id):
+        update_oauth_cr = cr.AwsCustomResource(
+            self, "UpdateCognitoOAuthSettings",
+            on_create=cr.AwsSdkCall(
+                service="CognitoIdentityServiceProvider",
+                action="updateUserPoolClient",
+                parameters={
+                    "UserPoolId": user_pool_id,
+                    "ClientId": client_id,
+                    "AllowedOAuthFlows": ["code"],
+                    "AllowedOAuthFlowsUserPoolClient": True,
+                    "AllowedOAuthScopes": ["openid", "email", "profile"],
+                    "CallbackURLs": [
+                        f"{app_url}/oauth2/idpresponse",
+                        app_url,
+                        "http://localhost:8501"
+                    ],
+                    "LogoutURLs": [
+                        app_url,
+                        "http://localhost:8501"
+                    ],
+                    "SupportedIdentityProviders": ["COGNITO"]
+                },
+                physical_resource_id=cr.PhysicalResourceId.of(f"{user_pool_id}-{client_id}-oauth-settings")
+            ),
+            policy=cr.AwsCustomResourcePolicy.from_statements([
+                iam.PolicyStatement(
+                    actions=["cognito-idp:UpdateUserPoolClient"],
+                    resources=[f"arn:aws:cognito-idp:{self.region}:{self.account}:userpool/{user_pool_id}"]
+                )
+            ])
+        )
+
+        return update_oauth_cr
