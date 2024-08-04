@@ -94,8 +94,8 @@ class S3CloudFrontStack(Stack):
         self.lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_images")
         upload_images_lambda = lambda_.Function(
             self,
-            f"{self.app_name}-upload-images-lambda",
-            function_name=f"{self.app_name}-upload-images-lambda",
+            f"{self.app_name}-upload-product-images",
+            function_name=f"{self.app_name}-upload-product-images",
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler="index.handler",
             ephemeral_storage_size=Size.mebibytes(2048),
@@ -135,7 +135,7 @@ class S3CloudFrontStack(Stack):
         # Grant the custom resource role permission to invoke the Lambda function
         upload_images_lambda.grant_invoke(custom_resource_role)
 
-        cr_physical_id = cr.PhysicalResourceId.of(f"{self.app_name}-upload-images")
+        cr_physical_id = cr.PhysicalResourceId.of(f"{self.app_name}-upload-product-images")
         custom_resource = cr.AwsCustomResource(
             self,
             f"{self.app_name}-upload-images-custom-resource",
@@ -149,15 +149,15 @@ class S3CloudFrontStack(Stack):
                 }
             ),
             # Its better to run the lambda manually from console than update on every stack deployment
-            on_update=cr.AwsSdkCall(
-                service="Lambda",
-                action="invoke",
-                physical_resource_id=cr_physical_id,
-                parameters={
-                    "FunctionName": upload_images_lambda.function_name,
-                    "InvocationType": "Event"
-                }
-            ),
+            # on_update=cr.AwsSdkCall(
+            #     service="Lambda",
+            #     action="invoke",
+            #     physical_resource_id=cr_physical_id,
+            #     parameters={
+            #         "FunctionName": upload_images_lambda.function_name,
+            #         "InvocationType": "Event"
+            #     }
+            # ),
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(
                     actions=["lambda:InvokeFunction"],

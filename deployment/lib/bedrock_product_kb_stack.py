@@ -3,48 +3,62 @@ import json
 import hashlib
 from aws_cdk import (
     NestedStack,
-    RemovalPolicy,
-    aws_s3 as s3,
-    aws_s3_deployment as s3deploy,
+    aws_opensearchserverless as opensearchserverless,
     aws_iam as iam,
     aws_lambda as lambda_,
     aws_bedrock as bedrock,
-    aws_ssm as ssm,
+    aws_ssm as ssm,    
+    custom_resources as cr,
+    BundlingOptions,
     CfnOutput,
-    CustomResource
+    Duration
 )
 from constructs import Construct
 
 class BedrockProductKnowledgeBaseStack(NestedStack):
 
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, data_source_bucket, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, data_source_bucket, 
+                 opensearch_collection_arn, opensearch_collection_name, opensearch_collection_endpoint, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        self.app_name= app_name
+        self.random_hash = hashlib.sha256(f"{self.app_name}-{self.region}".encode()).hexdigest()[:8]
+
+        index_name = config.product_vector_index_name
+        vector_field = 'product-details'
+        embeddings_model_id='amazon.titan-embed-text-v1'
+        vector_dimension = 1536 # For Titan text embedding v1. 
 
         # Create the IAM role for Bedrock Knowledge Base
-        product_knowledge_base_role = iam.Role(
+        self.product_knowledge_base_role = iam.Role(
             self, "BedrockKnowledgeBaseRole",
-            role_name=f"{app_name}-{random_hash}-product-kb-role",
+            role_name=f"{self.app_name}-{self.random_hash}-product-kb-role",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
             description="IAM role for Bedrock Product Knowledge Base"
         )
 
         # Allow permission to invoke bedrock model. Make sure you have access granted to ue this foundation model.
-        product_knowledge_base_role.add_to_policy(iam.PolicyStatement(
+        self.product_knowledge_base_role.add_to_policy(iam.PolicyStatement(
             actions=[
                 "bedrock:InvokeModel"
             ],
-            resources=[f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"]
+            resources=[f"arn:aws:bedrock:{self.region}::foundation-model/{embeddings_model_id}"]
         ))
+       
+        # Allow permission to access objects in Amazon S3 data source.
+        data_source_bucket.grant_read(self.product_knowledge_base_role)
+        
+        # Allow permission to access data in Opensearch vector store and call Api.
+        data_access_policy = self.add_aoss_access_policiy(opensearch_collection_arn, opensearch_collection_name, index_name, self.product_knowledge_base_role)
 
-        data_source_bucket.grant_read(product_knowledge_base_role)
+        # Create vector index in Opensearch collection
+        aoss_index = self.create_vector_index(opensearch_collection_arn, opensearch_collection_name, opensearch_collection_endpoint, index_name, vector_field, vector_dimension)
 
         # Create Bedrock Knowledge Base
         product_catalog_knowledge_base = bedrock.CfnKnowledgeBase(
             self, "ProductCatalogKnowledgeBase",
-            role_arn= product_knowledge_base_role.role_arn,
-            name=f"{app_name}-product-catalog-kb",
+            role_arn= self.product_knowledge_base_role.role_arn,
+            name=f"{self.app_name}-product-catalog-kb",
             description="Knowledge base for product catalog",
             knowledge_base_configuration=bedrock.CfnKnowledgeBase.KnowledgeBaseConfigurationProperty(
                 type="VECTOR",
@@ -53,7 +67,16 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                 )
             ),
             storage_configuration=bedrock.CfnKnowledgeBase.StorageConfigurationProperty(
-                type="OPENSEARCH_SERVERLESS"
+                type="OPENSEARCH_SERVERLESS",
+                opensearch_serverless_configuration=bedrock.CfnKnowledgeBase.OpenSearchServerlessConfigurationProperty(
+                    collection_arn=opensearch_collection_arn,
+                    field_mapping=bedrock.CfnKnowledgeBase.OpenSearchServerlessFieldMappingProperty(
+                        metadata_field="AMAZON_BEDROCK_METADATA",
+                        text_field="AMAZON_BEDROCK_TEXT_CHUNK",
+                        vector_field= vector_field
+                    ),
+                    vector_index_name= index_name
+                )
             )
         )
 
@@ -62,16 +85,20 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         # Create S3 DataSource for Product Knowledge Base
         product_catalog_data_source=bedrock.CfnDataSource(
             self, "ProductCatalogS3DataSource",
-            name=f"{app_name}-product-catalog-s3-datasource",
+            name=f"{self.app_name}-product-catalog-s3-datasource",
             knowledge_base_id= self.product_knowledge_base_id,
             data_source_configuration = bedrock.CfnDataSource.DataSourceConfigurationProperty(
                 s3_configuration=bedrock.CfnDataSource.S3DataSourceConfigurationProperty(
                     bucket_arn=data_source_bucket.bucket_arn,
-                    inclusion_prefixes=["products/"]
+                    inclusion_prefixes=[f"{index_name}/"]
                 ),
                 type="S3"
             )
         )
+
+        aoss_index.node.add_dependency(data_access_policy)
+        product_catalog_knowledge_base.node.add_dependency(aoss_index)
+        product_catalog_data_source.node.add_dependency(product_catalog_knowledge_base)
         
         # Store the Product Catalog KnowledgeBaseId in SSM Parameter Store
         ssm.StringParameter(
@@ -79,6 +106,135 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
             parameter_name=config.product_catalog_kb_id_param,
             string_value=self.product_knowledge_base_id
         )
+
+        # Output the KB details
+        CfnOutput(self, f"{product_catalog_knowledge_base.name}-id", value=self.product_knowledge_base_id)
+
+    def add_aoss_access_policiy(self, opensearch_collection_arn, opensearch_collection_name, index_name, iam_role):
+        
+        # Allow permission to call api for opensearch collection.
+        iam_role.add_to_policy(iam.PolicyStatement(
+            actions=[
+                "aoss:APIAccessAll"
+            ],
+            resources=[opensearch_collection_arn]
+        ))
+
+        # Create data access policy for the collection
+        data_access_policy = opensearchserverless.CfnAccessPolicy(
+            self, f"CollectionDataAccessPolicy-{index_name}",
+            name=f"{index_name}-kb-{self.random_hash}",
+            description="Data access policy for Amazon Bedrock Knowledge Base collection",
+            policy=json.dumps([{
+                "Description": "Allow access to the collection and Indexes",
+                "Rules": [
+                    {
+                        "ResourceType": "index",
+                        "Resource": [f"index/{opensearch_collection_name}/*"],
+                        "Permission": [
+                            "aoss:CreateIndex",
+                            "aoss:UpdateIndex",
+                            "aoss:DescribeIndex",
+                            "aoss:ReadDocument",
+                            "aoss:WriteDocument"
+                        ]
+                    },
+                    {
+                        "ResourceType": "collection",
+                        "Resource": [f"collection/{opensearch_collection_name}"],
+                        "Permission": [
+                            "aoss:CreateCollectionItems",
+                            "aoss:UpdateCollectionItems",
+                            "aoss:DescribeCollectionItems"
+                        ]
+                    }
+                ],
+                "Principal": [
+                    iam_role.role_arn
+                ]  
+            }]),
+            type="data"
+        )
+
+        return data_access_policy
+    
+    def create_vector_index(self, opensearch_collection_arn, opensearch_collection_name, opensearch_collection_endpoint, index_name, vector_field, vector_dimension):
+
+        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "create_opensearch_index")
+
+        # Create Lambda function to create OpenSearch index
+        create_index_lambda = lambda_.Function(
+            self,
+            f"{self.app_name}-create-opensearch-index",
+            function_name=f"{self.app_name}-create-opensearch-index",
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler="index.handler",
+            code=lambda_.Code.from_asset(
+                lambda_code_path,
+                    bundling= BundlingOptions(
+                        image=lambda_.Runtime.PYTHON_3_9.bundling_image,
+                        command=[
+                            "bash", "-c",
+                            "pip install --no-cache -r requirements.txt -t /asset-output && cp -rT . /asset-output"
+                        ]
+                    ),
+                ), 
+            environment={
+                "INDEX_NAME": index_name,
+                "AOSS_ENDPOINT": opensearch_collection_endpoint,
+                "VECTOR_FIELD": vector_field,
+                "VECTOR_DIMENSION": str(vector_dimension)
+            },
+            timeout=Duration.seconds(30)
+        )
+
+        # Grant the Lambda function permissions to access OpenSearch
+        # create_index_lambda.add_to_role_policy(iam.PolicyStatement(
+        #     actions=[
+        #         "aoss:CreateIndex",
+        #         "aoss:UpdateIndex",
+        #         "aoss:DescribeIndex"
+        #     ],
+        #     resources=[opensearch_collection_arn]
+        # ))
+
+        aoss_data_access_policy_lambda = self.add_aoss_access_policiy( opensearch_collection_arn, opensearch_collection_name, 'index-cr', create_index_lambda.role) 
+
+        # Create custom resource to create OpenSearch index
+        create_index_cr = cr.AwsCustomResource(
+            self, "CreateOpenSearchIndexCustomResource",
+            on_create=cr.AwsSdkCall(
+                service="Lambda",
+                action="invoke",
+                parameters={
+                    "FunctionName": create_index_lambda.function_name,
+                    "InvocationType": "RequestResponse"
+                },
+                physical_resource_id=cr.PhysicalResourceId.of(create_index_lambda.function_arn)
+            ),
+            on_update=cr.AwsSdkCall(
+                service="Lambda",
+                action="invoke",
+                parameters={
+                    "FunctionName": create_index_lambda.function_name,
+                    "InvocationType": "RequestResponse"
+                },
+                physical_resource_id=cr.PhysicalResourceId.of(create_index_lambda.function_arn)
+            ),
+            policy=cr.AwsCustomResourcePolicy.from_statements([
+                iam.PolicyStatement(
+                    actions=["lambda:InvokeFunction"],
+                    resources=[create_index_lambda.function_arn]
+                )
+            ])
+        )
+
+        create_index_cr.node.add_dependency(aoss_data_access_policy_lambda)
+
+        return create_index_cr
+
+    
+    
         
 
         

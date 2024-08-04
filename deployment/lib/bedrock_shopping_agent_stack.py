@@ -62,7 +62,7 @@ class BedrockShoppingAgentStack(NestedStack):
 
         # Create IAM role for Bedrock Agent
         agent_role = iam.Role(
-            self, "BedrockAgentRole",
+            self, "BedrockShoppingAgentRole",
             role_name= f"{app_name}-{random_hash}-shopping-agent-role",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
             description="IAM role for Bedrock Shopping Agent"
