@@ -22,7 +22,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class EcsStack(NestedStack):
+class EcsAppStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, 
                  user_pool, user_pool_client, user_pool_domain: str, 
                  application_dns_name: str = None, alb_dns_name : str =None, **kwargs) -> None:
@@ -31,6 +31,9 @@ class EcsStack(NestedStack):
         self.application_dns_name = application_dns_name
         self.domain_name = config.domain_name if hasattr(config, 'domain_name') else None
         self.hosted_zone_id = config.hosted_zone_id if hasattr(config, 'hosted_zone_id') else None
+        self.shopping_agent_id = ssm.StringParameter.value_from_lookup(self, config.shopping_agent_id_param)
+        self.shopping_agent_alias_id = ssm.StringParameter.value_from_lookup(self, config.shopping_agent_alias_id_param)
+
         random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
 
         # Create VPC
@@ -51,6 +54,16 @@ class EcsStack(NestedStack):
             resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/*"]
         ))
 
+        # Add permissions to invoke the specific Bedrock agent 
+        task_role.add_to_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "bedrock:InvokeAgent"
+            ],
+            resources=[
+                f"arn:aws:bedrock:{self.region}:{self.account}:agent-alias/{self.shopping_agent_id}/*"
+            ]
+        ))
 
         # Security Groups
         alb_security_group = ec2.SecurityGroup(
@@ -163,7 +176,9 @@ class EcsStack(NestedStack):
                 "STREAMLIT_SERVER_PORT": "8501",
                 "USER_POOL_ID": user_pool.user_pool_id,
                 "USER_POOL_CLIENT_ID": user_pool_client.user_pool_client_id,
-                "USER_POOL_DOMAIN": user_pool_domain.base_url()
+                "USER_POOL_DOMAIN": user_pool_domain.base_url(),
+                "SHOPPING_AGENT_ID": self.shopping_agent_id,
+                "SHOPPING_AGENT_ALIAS_ID": self.shopping_agent_alias_id,
             },
             logging=ecs.LogDrivers.aws_logs(
                 stream_prefix=f"ecs/{app_name}-{self.region}",
@@ -174,24 +189,21 @@ class EcsStack(NestedStack):
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "ClientSecret",
                         parameter_name= config.cognitoclientsecret_param,
-                        version=1,
-                        simple_name= False
+                        version=1
                     )
                 ),
                 "IMAGE_URL": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "CloudfrontUrl",
                         parameter_name= config.cloudfront_url_param,
-                        version=1,
-                        simple_name= False
+                        version=1
                     )
                 ),
-                 "API_URL": ecs.Secret.from_ssm_parameter(
+                "API_URL": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "API_URL",
                         parameter_name= config.apigateway_url_param,
-                        version=1,
-                        simple_name= False
+                        version=1
                     )
                 )
             }

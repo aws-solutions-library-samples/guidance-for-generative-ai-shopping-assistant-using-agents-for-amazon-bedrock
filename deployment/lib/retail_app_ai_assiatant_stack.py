@@ -2,9 +2,9 @@ import hashlib
 from aws_cdk import Stack
 from constructs import Construct
 from lib.cognito_stack import CognitoStack
-from lib.ecs_stack import EcsStack
+from lib.ecs_app_stack import EcsAppStack
 
-class RetailAIAssistantStack(Stack):
+class RetailAppAIAssistantStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
@@ -26,7 +26,7 @@ class RetailAIAssistantStack(Stack):
         )
 
         # Create ECS Stack
-        ecs_stack = EcsStack(
+        ecs_stack = EcsAppStack(
             self, 
             "EcsStack", 
             app_name, 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import aws_cdk as cdk
-from lib.retail_ai_assiatant_app_stack import RetailAIAssistantStack
+from lib.retail_app_ai_assiatant_stack import RetailAppAIAssistantStack
 from lib.product_service_stack import ProductServiceStack
 from lib.cloudfront_stack import S3CloudFrontStack
 from lib.retail_shopping_agent_stack import RetailShoppingAgentStack
@@ -27,7 +27,7 @@ def main():
         env=env
     )
 
-    retail_ai_stack = RetailAIAssistantStack(
+    retail_ai_stack = RetailAppAIAssistantStack(
         app,
         "RetailAIAssistantStack",
         app_name=config.app_name,
