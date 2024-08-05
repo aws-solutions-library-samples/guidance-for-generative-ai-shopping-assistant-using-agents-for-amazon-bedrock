@@ -10,7 +10,7 @@ headers = {
     'Content-Type': 'application/json'
 }
 
-def lambda_handler(event, context):
+def handler(event, context):
     print(event)
     action = event['actionGroup']
     api_path = event['apiPath']
