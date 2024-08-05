@@ -7,10 +7,13 @@ from aws_cdk import (
     aws_iam as iam,
     aws_lambda as lambda_,
     aws_bedrock as bedrock,
-    aws_ssm as ssm,    
+    aws_ssm as ssm,     
+    aws_logs as logs,
+    aws_cloudwatch as cloudwatch,
     custom_resources as cr,
     BundlingOptions,
     CfnOutput,
+    RemovalPolicy,
     Duration
 )
 from constructs import Construct
@@ -116,10 +119,14 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
             data_deletion_policy= 'RETAIN'
         )
         self.data_source_id = product_catalog_data_source.attr_data_source_id
+        
+        # Enable Knowledge Base Application Logs to Cloudwatch
+        cloudwatch_logging = self.setup_knowledge_base_logging( product_catalog_knowledge_base.name, product_catalog_knowledge_base.attr_knowledge_base_arn)
 
         aoss_index.node.add_dependency(data_access_policy)
         product_catalog_knowledge_base.node.add_dependency(aoss_index)
         product_catalog_data_source.node.add_dependency(product_catalog_knowledge_base)
+        cloudwatch_logging.node.add_dependency(product_catalog_knowledge_base)
         
         # Store the Product Catalog KnowledgeBaseId in SSM Parameter Store
         ssm.StringParameter(
@@ -256,6 +263,45 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         create_index_cr.node.add_dependency(aoss_data_access_policy_lambda)
 
         return create_index_cr
+    
+    def setup_knowledge_base_logging(self, knowledge_base_name, knowledge_base_arn):
+        # Create a CloudWatch log group for knowledge base logs
+        log_group_name = f"/aws/bedrock/{knowledge_base_name}-logs"
+        knowledge_base_log_group = logs.LogGroup(self, f"KnowledgeBaseLogGroup",
+            log_group_name=log_group_name,
+            retention=logs.RetentionDays.ONE_MONTH,
+            removal_policy=RemovalPolicy.DESTROY
+        )
+
+        # Create DeliverySource
+        delivery_source = logs.CfnDeliverySource(self, "KnowledgeBaseDeliverySource",
+            log_type="APPLICATION_LOGS",
+            name=f"{knowledge_base_name}-delivery-source",
+            resource_arn=knowledge_base_arn
+        )
+
+        # Create DeliveryDestination
+        delivery_destination = logs.CfnDeliveryDestination(self, "KnowledgeBaseDeliveryDestination",
+            name=f"{knowledge_base_name}-delivery-destination",
+            destination_resource_arn=knowledge_base_log_group.log_group_arn
+        )
+
+        # Create Delivery
+        delivery = logs.CfnDelivery(self, "KnowledgeBaseDelivery",
+            delivery_destination_arn=delivery_destination.attr_arn,
+            delivery_source_name=delivery_source.name
+        )
+
+        # Ensure proper dependency chain
+        delivery.add_dependency(delivery_source)
+        delivery.add_dependency(delivery_destination)
+
+        # Output the resources created
+        CfnOutput(self, "KnowledgeBaseLogGroupName", value=knowledge_base_log_group.log_group_name)
+        CfnOutput(self, "DeliverySourceName", value=delivery_source.name)
+        CfnOutput(self, "DeliveryDestinationName", value=delivery_destination.name)
+
+        return delivery
 
     
     
