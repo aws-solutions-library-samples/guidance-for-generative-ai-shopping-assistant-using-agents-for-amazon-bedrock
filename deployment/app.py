@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import aws_cdk as cdk
-from lib.retail_ai_assiatant_stack import RetailAIAssistantStack
+from lib.retail_ai_assiatant_app_stack import RetailAIAssistantStack
 from lib.product_service_stack import ProductServiceStack
 from lib.cloudfront_stack import S3CloudFrontStack
 from lib.retail_shopping_agent_stack import RetailShoppingAgentStack

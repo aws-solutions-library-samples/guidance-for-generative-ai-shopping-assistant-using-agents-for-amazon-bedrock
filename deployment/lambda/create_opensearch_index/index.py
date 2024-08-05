@@ -51,7 +51,8 @@ def create_mapping(
                     "engine": "faiss",
                     "space_type": "l2",
                     "name": "hnsw",
-                    "parameters": {},
+                    "parameters": {
+                    }
                 },
             },
             "id": {
@@ -67,21 +68,39 @@ def create_mapping(
         }
     return mapping
 
+def create_setting() -> dict:
+    setting = {
+        "index": {
+            "number_of_shards": "2",
+            "knn.algo_param": {"ef_search": "512"},
+            "knn": "true",
+        },
+    }
+    return setting
 
 def create_or_update_index(
-    client: OpenSearch, index_name: str, mapping: dict[str, str]
+    client: OpenSearch, index_name: str, mapping: dict[str, str],  setting: dict[str, str]
 ) -> None:
+    
+    logger.info(f"setting: {setting}")
+    logger.info(f"mapping: {mapping}")
     if client.indices.exists(index_name):
         logger.info(f"Index {index_name} already exists. Updating mapping.")
         client.indices.put_mapping(
             index=index_name,
-            body=mapping,
+            body=mapping
+        )
+        client.indices.put_settings(
+            index=index_name,
+            body=setting
         )
     else:
         logger.info(f"Creating index {index_name}")
+
         client.indices.create(
             index_name,
             body={
+                "settings": setting,
                 "mappings": mapping,
             },
             params={"wait_for_active_shards": "all"},
@@ -94,7 +113,9 @@ def handler(event, context):
     index_name = os.environ['INDEX_NAME']
     aoss_endpoint = os.environ['AOSS_ENDPOINT']
     vector_field = os.environ['VECTOR_FIELD']
-    dimensions = os.environ['VECTOR_DIMENSION'] 
+    dimensions = os.environ['VECTOR_DIMENSION']
+    text_field = os.environ['TEXT_FIELD']
+    metadata_field = os.environ['METADATA_FIELD'] 
 
     aoss_endpoint_name  = ''
 
@@ -107,27 +128,23 @@ def handler(event, context):
     # Amazon Bedrock Default mapping
     metadata_management = [
         MetadataManagementField(
-            MappingField= 'AMAZON_BEDROCK_TEXT_CHUNK',
+            MappingField= text_field,
             DataType = 'text',
             Filterable = True,
         ),
         MetadataManagementField(
-            MappingField= 'AMAZON_BEDROCK_METADATA',
+            MappingField= metadata_field,
             DataType = 'text',
             Filterable = False,
-        ),
-        MetadataManagementField(
-            MappingField= 'x-amz-bedrock-kb-source-uri',
-            DataType = 'text',
-            Filterable = True,
         ),
     ]
 
     try:
         client = connect_opensearch(aoss_endpoint_name)
         mapping = create_mapping(vector_field, dimensions, metadata_management)
+        setting = create_setting()
 
-        create_or_update_index(client, index_name, mapping)
+        create_or_update_index(client, index_name, mapping, setting)
 
     except Exception as e:
         logger.error(f"Error creating or updating index {index_name}")

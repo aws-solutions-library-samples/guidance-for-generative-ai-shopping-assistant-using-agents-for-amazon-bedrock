@@ -10,6 +10,9 @@ class Config:
         self.default_user_email = 'demo-user@example.com'
         self.default_temp_password = 'TempPass123@'
 
+        # Amazon Bedrock config names
+        self.bedrock_shopping_agent_name = f"{self.app_name}-shopping-agent"
+        self.bedrock_shopping_agent_alias = "PROD"
         self.product_vector_index_name="product-catalog"
         self.faq_vector_index_name="faq-policies"
 

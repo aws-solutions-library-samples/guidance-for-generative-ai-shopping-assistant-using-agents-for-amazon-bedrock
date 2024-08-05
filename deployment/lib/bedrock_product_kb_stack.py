@@ -26,6 +26,8 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
 
         index_name = config.product_vector_index_name
         vector_field = 'product-details'
+        text_field="textField"
+        metadata_field="metadataField"
         embeddings_model_id='amazon.titan-embed-text-v1'
         vector_dimension = 1536 # For Titan text embedding v1. 
 
@@ -34,6 +36,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
             self, "BedrockKnowledgeBaseRole",
             role_name=f"{self.app_name}-{self.random_hash}-product-kb-role",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
+            path="/service-role/",
             description="IAM role for Bedrock Product Knowledge Base"
         )
 
@@ -52,7 +55,8 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         data_access_policy = self.add_aoss_access_policiy(opensearch_collection_arn, opensearch_collection_name, index_name, self.product_knowledge_base_role)
 
         # Create vector index in Opensearch collection
-        aoss_index = self.create_vector_index(opensearch_collection_arn, opensearch_collection_name, opensearch_collection_endpoint, index_name, vector_field, vector_dimension)
+        aoss_index = self.create_vector_index(opensearch_collection_arn, opensearch_collection_name, opensearch_collection_endpoint, 
+                                              index_name, vector_field, vector_dimension, text_field, metadata_field)
 
         # Create Bedrock Knowledge Base
         product_catalog_knowledge_base = bedrock.CfnKnowledgeBase(
@@ -71,8 +75,10 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                 opensearch_serverless_configuration=bedrock.CfnKnowledgeBase.OpenSearchServerlessConfigurationProperty(
                     collection_arn=opensearch_collection_arn,
                     field_mapping=bedrock.CfnKnowledgeBase.OpenSearchServerlessFieldMappingProperty(
-                        metadata_field="AMAZON_BEDROCK_METADATA",
-                        text_field="AMAZON_BEDROCK_TEXT_CHUNK",
+                        # metadata_field="AMAZON_BEDROCK_METADATA",
+                        # text_field="AMAZON_BEDROCK_TEXT_CHUNK",
+                        text_field=text_field,
+                        metadata_field= metadata_field,
                         vector_field= vector_field
                     ),
                     vector_index_name= index_name
@@ -81,6 +87,19 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         )
 
         self.knowledge_base_id = product_catalog_knowledge_base.attr_knowledge_base_id
+
+        # Add trust relationship to Knowledge Base Role
+        policy = self.product_knowledge_base_role.assume_role_policy.add_statements(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                principals=[iam.ServicePrincipal("bedrock.amazonaws.com")],
+                actions=["sts:AssumeRole"],
+                conditions={
+                    "StringEquals": {"aws:SourceAccount": self.account},
+                    "ArnLike": {"AWS:SourceArn": f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/*"}
+                }
+            )
+        )
 
         # Create S3 DataSource for Product Knowledge Base
         product_catalog_data_source=bedrock.CfnDataSource(
@@ -93,7 +112,8 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                     inclusion_prefixes=[f"{index_name}/"]
                 ),
                 type="S3"
-            )
+            ),
+            data_deletion_policy= 'RETAIN'
         )
         self.data_source_id = product_catalog_data_source.attr_data_source_id
 
@@ -159,7 +179,8 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
 
         return data_access_policy
     
-    def create_vector_index(self, opensearch_collection_arn, opensearch_collection_name, opensearch_collection_endpoint, index_name, vector_field, vector_dimension):
+    def create_vector_index(self, opensearch_collection_arn, opensearch_collection_name, opensearch_collection_endpoint, 
+                            index_name, vector_field, vector_dimension, text_field, metadata_field):
 
         lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "create_opensearch_index")
 
@@ -184,12 +205,22 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                 "INDEX_NAME": index_name,
                 "AOSS_ENDPOINT": opensearch_collection_endpoint,
                 "VECTOR_FIELD": vector_field,
+                "TEXT_FIELD": text_field,
+                "METADATA_FIELD": metadata_field,
                 "VECTOR_DIMENSION": str(vector_dimension)
             },
             timeout=Duration.seconds(30)
         )
 
-        # Grant the Lambda function permissions to access OpenSearch
+ 	    # Grant the Lambda function permissions to access OpenSearch
+        create_index_lambda.add_to_role_policy(iam.PolicyStatement(
+            actions=[
+                "aoss:CreateIndex",
+                "aoss:UpdateIndex",
+                "aoss:DescribeIndex"
+            ],
+            resources=[opensearch_collection_arn]
+        ))
         aoss_data_access_policy_lambda = self.add_aoss_access_policiy( opensearch_collection_arn, opensearch_collection_name, 'index-cr', create_index_lambda.role) 
 
         # Create custom resource to create OpenSearch index

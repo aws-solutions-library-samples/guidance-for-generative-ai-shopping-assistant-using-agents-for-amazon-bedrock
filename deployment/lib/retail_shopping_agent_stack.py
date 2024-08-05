@@ -4,6 +4,7 @@ from constructs import Construct
 from lib.bedrock_shopping_agent_stack import BedrockShoppingAgentStack
 from lib.bedrock_product_kb_stack import BedrockProductKnowledgeBaseStack
 from lib.opensearch_serverless_stack import OpenSearchServerlessStack
+from lib.bedrock_logging_setup import BedrockLoggingStack
 from aws_cdk import (
     Stack,
     aws_iam as iam,
@@ -13,7 +14,7 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_ssm as ssm,
     RemovalPolicy,
-    Duration
+    Duration,
 )
 
 class RetailShoppingAgentStack(Stack):
@@ -34,6 +35,13 @@ class RetailShoppingAgentStack(Stack):
         s3_upload_kb_files = s3deploy.BucketDeployment(self, "UploadKBFiles",
             sources=[s3deploy.Source.asset("./bedrock_agent/knowledge_bases")],
             destination_bucket=data_source_bucket
+        )
+
+        # Setup Logging for Amazon Bedrock Model Invocations for current AWS Account and Region
+        model_invocation_logs = BedrockLoggingStack(
+            self,
+            "BedrockLoggingStack",
+            config=config
         )
 
         # Create OpenSearchServerless vector store for Bedrock Knowledge Base
@@ -75,7 +83,6 @@ class RetailShoppingAgentStack(Stack):
         product_catalog_kb_stack.node.add_dependency(data_source_bucket)
         
         shopping_agent_stack.node.add_dependency(product_catalog_kb_stack)
-    
    
     def upload_product_catalog_and_sync_kb(self, data_source_bucket, knowledge_base_id, data_source_id, config):
 
@@ -147,5 +154,4 @@ class RetailShoppingAgentStack(Stack):
         )
 
         return process_catalog_cr
-
-        
+    
