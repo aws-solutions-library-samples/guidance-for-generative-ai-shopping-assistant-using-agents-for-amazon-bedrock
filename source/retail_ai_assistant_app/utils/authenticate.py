@@ -1,6 +1,7 @@
 # auth.py
 import os
 import base64
+from utils.config import Config
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 import requests
@@ -8,22 +9,10 @@ import urllib.parse
 import streamlit as st
 import jwt
 
-# Configuration from environment file
-load_dotenv()
-
-COGNITO_DOMAIN = os.environ.get("USER_POOL_DOMAIN")
-COGNITO_CLIENT_ID = os.environ.get("USER_POOL_CLIENT_ID")
-COGNITO_CLIENT_SECRET = os.environ.get("USER_POOL_CLIENT_SECRET")
-REDIRECT_URI = os.environ.get("APP_URL")
-
-st.write(COGNITO_DOMAIN)
-st.write(COGNITO_CLIENT_ID)
-st.write(COGNITO_CLIENT_SECRET)
-st.write(REDIRECT_URI)
-
-
 def initialize_session_vars():
     """Initialize Streamlit session state variables."""
+    if 'config' not in st.session_state:
+        st.session_state.config = Config()
     if 'user_authenticated' not in st.session_state:
         st.session_state.user_authenticated = False
     if 'user_profile' not in st.session_state:
@@ -47,7 +36,7 @@ def decode_jwt(token):
     """Decode JWT token."""
     try:
         payload = jwt.decode(token, algorithms=['ES256'], options={"verify_signature": False})
-        st.write('USER', payload)
+        # st.write('USER', payload)
         #print(payload)
         return payload
     except jwt.DecodeError:
@@ -64,7 +53,7 @@ def is_token_expired(token):
 def get_info_from_amz_header(amz_header):
     try:
         payload = jwt.decode(amz_header, algorithms=['ES256'], options={"verify_signature": False})
-        st.write('USER', payload)
+        # st.write('USER', payload)
         #print(payload)
         return payload
     except jwt.DecodeError:
@@ -74,17 +63,17 @@ def get_info_from_amz_header(amz_header):
 
 def get_tokens(auth_code):
     """Exchange auth code for tokens."""
-    token_url = f"{COGNITO_DOMAIN}/oauth2/token"
-    auth = base64.b64encode(f"{COGNITO_CLIENT_ID}:{COGNITO_CLIENT_SECRET}".encode()).decode()
+    token_url = f"{st.session_state.config.COGNITO_DOMAIN}/oauth2/token"
+    auth = base64.b64encode(f"{st.session_state.config.COGNITO_CLIENT_ID}:{st.session_state.config.COGNITO_CLIENT_SECRET}".encode()).decode()
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': f'Basic {auth}'
     }
     data = {
         'grant_type': 'authorization_code',
-        "client_id": COGNITO_CLIENT_ID,
+        "client_id": st.session_state.config.COGNITO_CLIENT_ID,
         'code': auth_code,
-        'redirect_uri': REDIRECT_URI,
+        'redirect_uri': st.session_state.config.REDIRECT_URI,
     }
     response = requests.post(token_url, headers=headers, data=data)
     if response.status_code == 200:
@@ -93,8 +82,8 @@ def get_tokens(auth_code):
 
 def refresh_token(refresh_token):
     """Refresh access token using refresh token."""
-    token_url = f"{COGNITO_DOMAIN}/oauth2/token"
-    auth = base64.b64encode(f"{COGNITO_CLIENT_ID}:{COGNITO_CLIENT_SECRET}".encode()).decode()
+    token_url = f"{st.session_state.config.COGNITO_DOMAIN}/oauth2/token"
+    auth = base64.b64encode(f"{st.session_state.config.COGNITO_CLIENT_ID}:{st.session_state.config.COGNITO_CLIENT_SECRET}".encode()).decode()
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': f'Basic {auth}'
@@ -102,7 +91,7 @@ def refresh_token(refresh_token):
     data = {
         'grant_type': 'refresh_token',
         'refresh_token': refresh_token,
-        'client_id': COGNITO_CLIENT_ID,
+        'client_id': st.session_state.config.COGNITO_CLIENT_ID,
     }
     response = requests.post(token_url, headers=headers, data=data)
     return response.json()
@@ -110,18 +99,18 @@ def refresh_token(refresh_token):
 def get_cognito_login_url():
     """Generate Cognito login URL."""
     query_params = {
-        "client_id": COGNITO_CLIENT_ID,
+        "client_id": st.session_state.config.COGNITO_CLIENT_ID,
         "response_type": "code",
         "scope": "openid email profile",
-        "redirect_uri": REDIRECT_URI
+        "redirect_uri": st.session_state.config.REDIRECT_URI
     }
-    url = f"{COGNITO_DOMAIN}/login?{urllib.parse.urlencode(query_params)}"
-    st.write('get_cognito_login_url', url)
-    return f"{COGNITO_DOMAIN}/login?{urllib.parse.urlencode(query_params)}"
+    url = f"{st.session_state.config.COGNITO_DOMAIN}/login?{urllib.parse.urlencode(query_params)}"
+    #st.write('get_cognito_login_url', url)
+    return url
 
 def get_logout_state():
     # Generate a unique state value
-    session_unique_id = f"Logout_State_{COGNITO_CLIENT_ID}"
+    session_unique_id = f"Logout_State_{st.session_state.config.COGNITO_CLIENT_ID}"
     state = base64.urlsafe_b64encode(session_unique_id.encode()).decode()
     return state
 
@@ -129,10 +118,10 @@ def get_cognito_logout_url():
     """Generate Cognito logout URL."""
 
     url = (
-        f"{COGNITO_DOMAIN}/logout?"
+        f"{st.session_state.config.COGNITO_DOMAIN}/logout?"
         f"response_type=code&"
-        f"client_id={COGNITO_CLIENT_ID}&"
-        f"redirect_uri={REDIRECT_URI}&"
+        f"client_id={st.session_state.config.COGNITO_CLIENT_ID}&"
+        f"redirect_uri={st.session_state.config.REDIRECT_URI}&"
         f"state={get_logout_state()}&"
         f"scope=openid profile email"
     )
@@ -160,14 +149,14 @@ def authenticate_user():
     # Handle OAuth2 Redirect and Token Management if ALB headers are not present
     query_params =  st.query_params
     if 'code' in query_params:
-        st.write('In code')
+        # st.write('In code')
         auth_code = query_params.get('code')
         if st.session_state.auth_code != auth_code:
             st.session_state.auth_result = get_tokens(auth_code)
             st.session_state.auth_code = auth_code
 
     if st.session_state.auth_result is not None:
-        st.write('In auth_result')
+        # st.write('In auth_result')
         id_token = st.session_state.auth_result['id_token']
         access_token = st.session_state.auth_result['access_token']
         refresh_token_value = st.session_state.auth_result['refresh_token']
@@ -233,7 +222,7 @@ def logout():
     st.query_params.clear()
     logout_url = get_cognito_logout_url()
 
-    # Invalidate AWSELBSessionCookie to perform successful logout on Cognito Hosted UI
+    # Invalidate AWSELBSessionCookie to perform successful logout on Cognito Hosted UI. Does not work with Streamlit today
     # expire =datetime.now() - timedelta(hours=1)
     # cookie_manager.set('AWSELBAuthSessionCookie-0', '', key='set_AWSELBAuthSessionCookie-0', expires_at=expire, path='/')
     # cookie_manager.set('AWSELBAuthSessionCookie-1', '', key='set_AWSELBAuthSessionCookie-1', expires_at=expire, path='/')
