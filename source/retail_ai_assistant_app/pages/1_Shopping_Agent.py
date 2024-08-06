@@ -1,7 +1,6 @@
 import streamlit as st
-import re, io, json
+import re, io, json, os
 import pandas as pd
-import logging
 import uuid
 from utils.logger import get_logger
 from utils.authenticate import authenticate_user
@@ -20,12 +19,48 @@ st.set_page_config(
     layout='wide'
 )
 
+def load_agent_session_state():
+    # Send current time for time awareness to LLM
+    current_time = datetime.now()
 
-def initialize_session_state( welcome_message, welcome_suppport_message):
+    if 'selected_user_profile' in st.session_state and st.session_state.selected_user_profile is not None:
+        selected_user_profile = st.session_state.selected_user_profile 
+        
+        address = selected_user_profile['addresses'][0]
+        address_str = ', '.join([f"{key}: {value}" for key, value in address.items()])
+
+        st.session_state.agent_session_state = {
+            "promptSessionAttributes": {
+                'currentDate': str(current_time),
+                'email': selected_user_profile['email'],
+                "first_name": selected_user_profile['first_name'],
+                "last_name": selected_user_profile['last_name'],
+                "address": address_str,
+                "age": str(selected_user_profile['age']),
+                "gender": selected_user_profile['gender'],
+                "persona": selected_user_profile['persona'],
+                "discount_persona": selected_user_profile['discount_persona']
+            },
+            "sessionAttributes": {
+                "username": selected_user_profile['username'],
+                "email": selected_user_profile['email']
+            }
+        }
+    else:
+        st.session_state.agent_session_state = {
+            "promptSessionAttributes": {
+                'currentDate': str(current_time)
+            }
+        }
+
+def initialize_session_state():
+    st.session_state.welcome_message = "Hello! Welcome to AnyCompanyCommerce. I'm your AI shopping assistant here to help you find products that match your needs and interests. How can I assist you today?"
+    st.session_state.welcome_suppport_message = "Hello! Welcome to AnyCompanyCommerce. How can I assist you today with any questions or concerns regarding our policies or services?"
+
     if 'config' not in st.session_state:
         st.session_state.config = Config()
     if 'logger' not in st.session_state:
-        st.session_state.logger = get_logger(__name__)
+        st.session_state.logger = get_logger('retail-ai-agent')
     if 'bedrock_agent' not in st.session_state:
         st.session_state.bedrock_agent = BedrockAgent(st.session_state.config.SESSION, st.session_state.logger)
     if 'product_service' not in st.session_state:
@@ -36,8 +71,8 @@ def initialize_session_state( welcome_message, welcome_suppport_message):
     st.session_state.trace = {}
     st.session_state.email_confirmation=''
     if 'agent_option' in st.session_state and st.session_state.agent_option['label'] == "Support Agent":
-        welcome_message=welcome_suppport_message
-    st.session_state.messages.append({"role": "assistant", "content": welcome_message})
+        st.session_state.welcome_message=st.session_state.welcome_suppport_message
+    st.session_state.messages.append({"role": "assistant", "content": st.session_state.welcome_message})
     st.session_state.selected_product = None
     st.session_state.buy_product = None
     st.session_state.user_action = None
@@ -45,20 +80,38 @@ def initialize_session_state( welcome_message, welcome_suppport_message):
     st.session_state.answer = None
     st.session_state.cart = []
 
-    # Get the current time in the user's timezone
-    user_timezone = pytz.timezone("Europe/Stockholm")
-    current_time = datetime.now(user_timezone)
-    st.session_state.agent_session_state = {
-        "promptSessionAttributes": {
-            'firstName': 'John',
-            'currentDate': str(current_time),
-            'email': 'jonh.doe@xyz.com'
-        },
-        "sessionAttributes": {
-            'email': 'jonh.doe@xyz.com'
-        }
-    }
+    load_agent_session_state()
 
+    # # Get the current time in the user's timezone
+    # user_timezone = pytz.timezone("Europe/Stockholm")
+    # current_time = datetime.now(user_timezone)
+    # st.session_state.agent_session_state = {
+    #     "promptSessionAttributes": {
+    #         'firstName': 'John',
+    #         'currentDate': str(current_time),
+    #         'email': 'jonh.doe@xyz.com'
+    #     },
+    #     "sessionAttributes": {
+    #         'email': 'jonh.doe@xyz.com'
+    #     }
+    # }
+
+@st.cache_data
+def load_random_user_profiles():
+    file_path = os.path.join('.','assets','data', 'user-profiles.json')
+    try:
+        with open(file_path, 'r') as file:
+            user_profiles = json.load(file)
+        return user_profiles
+    except FileNotFoundError:
+        print(f"Error: The file {file_path} was not found.")
+        return None
+    except json.JSONDecodeError:
+        print(f"Error: The file {file_path} contains invalid JSON.")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+        return None
 
 def GetAnswers(query, session_id, assistant, agent_id, agent_alias_id, agent_session_state):
 
@@ -313,44 +366,66 @@ def submit_callback():
 def create_shipping_form():
     with st.form("shipping_address_form"):
         st.write("## Shipping Address")
+
+        email = 'john.doe@xyz.com'
+        address_info = {
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'address1': 'ABC X street',
+            'state': 'Stockholm',
+            'city': 'Stockholm',
+            'zipcode': '336647',
+            'country': 'Sweden'
+        }
         
+        if st.session_state.selected_user_profile and st.session_state.selected_user_profile != '':
+            address = st.session_state.selected_user_profile['addresses'][0]
+            email = st.session_state.selected_user_profile['email']
+
+            address_info.update({
+            'first_name': address.get('first_name', 'John'),
+            'last_name': address.get('last_name', 'Doe'),
+            'address1': address.get('address1', 'ABC X street'),
+            'state': address.get('state', 'Stockholm'),
+            'city': address.get('city', 'Stockholm'),
+            'zipcode': address.get('zipcode', '336647'),
+            'country': address.get('country', 'Sweden')
+        })
+
         # Email in a single column
-        st.text_input("Email", key="email", value=st.session_state.get('email', 'john.doe@xyz.com'))
-        
+        st.text_input("Email", key="email", value=st.session_state.get('email', email))
+
         # Create two columns for the form
         col1, col2 = st.columns(2)
-        
+
         # First Name and Last Name in the same row
         with col1:
-            st.text_input("First Name", key="first_name", value=st.session_state.get('first_name', 'John'))
+            st.text_input("First Name", key="first_name", value=st.session_state.get('first_name', address_info['first_name']))
         with col2:
-            st.text_input("Last Name", key="last_name", value=st.session_state.get('last_name', 'Doe'))
-        
+            st.text_input("Last Name", key="last_name", value=st.session_state.get('last_name', address_info['last_name']))
+
         # Address in a single column
-        st.text_input("Address", key="address", value=st.session_state.get('address', 'ABC X street'))
-        
+        st.text_input("Address", key="address", value=st.session_state.get('address', address_info['address1']))
+
         # City and Zip Code in the same row
         with col1:
-            st.text_input("City", key="city", value=st.session_state.get('city', 'Stockholm'))
+            st.text_input("City", key="city", value=st.session_state.get('city', address_info['city']))
         with col2:
-            st.text_input("Zip Code", key="zip_code", value=st.session_state.get('zip_code', '336647'))
-        
+            st.text_input("Zip Code", key="zip_code", value=st.session_state.get('zip_code', address_info['zipcode']))
+
         # State and Country in the same row
         with col1:
-            st.text_input("State", key="state", value=st.session_state.get('state', 'Stockholm'))
+            st.text_input("State", key="state", value=st.session_state.get('state', address_info['state']))
         with col2:
-            st.text_input("Country", key="country", value=st.session_state.get('country', 'Sweden'))
-        
-    
+            st.text_input("Country", key="country", value=st.session_state.get('country', address_info['country']))
+
         # Center the submit button and give it a custom width
-        col1, col2, col3 = st.columns([1,2,1])
+        col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.form_submit_button("Submit", on_click=submit_callback,  use_container_width=True)
+            st.form_submit_button("Submit", on_click=submit_callback, use_container_width=True)
     
 
 def load_demo():
-
-    print('In load demo', st.session_state.selected_product)
 
     agent_option = st.session_state.agent_option
     chat_container = st.container(height=600)
@@ -592,16 +667,44 @@ def load_trace():
         else:
             st.text("None")
 
+
 def load_session():
     st.write(f"Session ID: {st.session_state.session_id}")
-    if st.session_state.agent_session_state:
+
+    user_profiles = load_random_user_profiles()
+
+    if user_profiles is not None and user_profiles != '':
+        # Create a list of user options
+        user_options = [""] + [f"ID: {user['id']} - AGE: {user['age']}, GENDER: {user['gender']}, PERSONA: {user['persona']}, DISCOUNT: {user['discount_persona']}" for user in user_profiles]
+    else:
+        user_options = [""]
+
+    # Add a dropdown to select a user
+    st.selectbox('Select a persona:', user_options, key='user_dropdown', on_change=on_user_change)
+    
+    if 'agent_session_state' in st.session_state and st.session_state.agent_session_state:
         st.json(st.session_state.agent_session_state)
+
+def on_user_change():
+
+    user_profiles = load_random_user_profiles()
+    selected_user = st.session_state.user_dropdown
+    # Display the selected user's information
+    if selected_user and selected_user != "":
+        # Extract the ID from the selected option
+        selected_user_id = selected_user.split(" - ")[0].split(": ")[1]
+        # Find the full user profile based on the ID
+        st.session_state.selected_user_profile = next((user for user in user_profiles if str(user['id']) == selected_user_id), None)
+    else:
+        st.session_state.selected_user_profile = None
+    initialize_session_state()
+
+    # st.session_state.selected_user_data = next((user for user in users_data if f"{user['first_name']} {user['last_name']} ({user['age']}, {user['gender']}, {user['persona']}, {user['discount_persona']})" == selected_user), None)
+
 
 
 def main():
     
-    welcome_message = "Hello! Welcome to AnyCompanyCommerce. I'm your AI shopping assistant here to help you find products that match your needs and interests. How can I assist you today?"
-    welcome_suppport_message = "Hello! Welcome to AnyCompanyCommerce. How can I assist you today with any questions or concerns regarding our policies or services?"
         
     col1, col2,  = st.columns([2,1])
     with col1:
@@ -609,12 +712,15 @@ def main():
 
     with col2:
         if st.button("Clear message history"):
-            print('initialize session', 'clear')
-            initialize_session_state(welcome_message, welcome_suppport_message)
+            st.session_state.selected_user_profile = None
+            st.session_state.user_dropdown = ""
+            initialize_session_state()
     
     # Initialize the messages and assistant object using session state
     if "messages" not in st.session_state or "bedrock_agent" not in st.session_state:
-        initialize_session_state(welcome_message, welcome_suppport_message)
+        st.session_state.selected_user_profile = None
+        st.session_state.user_dropdown = ""
+        initialize_session_state()
 
     # Define the options for the dropdown
     agent_options = [
@@ -624,28 +730,15 @@ def main():
     agent_option = st.sidebar.selectbox("Select an agent", agent_options, format_func=lambda option: option["label"], key='agent_option')
     if agent_option['label'] == "Support Agent":
         agent_title = "👩‍💼AnyCompanyCommerce Support Agent"
-        welcome_message = welcome_suppport_message
+        st.session_state.welcome_message = st.session_state.welcome_suppport_message
 
-    chat_demo, session, trace,  = st.tabs(["Assistant", "Session", "Trace"])
+    chat_demo, session, trace,  = st.tabs(["Assistant", "Agent Session State", "Trace"])
     with session:
         load_session()
     with chat_demo:
         load_demo()
     with trace:
         load_trace()
-
-    # users_data = fetch_random_users(10)
-
-    # # Create a list of user options
-    # user_options = [""] + [f"AGE: {user['age']}, GENDER: {user['gender']}, PERSONA: {user['persona']}, DISCOUNT: {user['discount_persona']}" for user in users_data]
-
-    # # Add a dropdown to select a user
-    # selected_user = st.selectbox('Select a persona:', user_options)
-
-    # # Display the selected user's information
-    # if selected_user:
-    #     selected_user_data = next((user for user in users_data if f"{user['first_name']} {user['last_name']} ({user['age']}, {user['gender']}, {user['persona']}, {user['discount_persona']})" == selected_user), None)
-
 
     if st.session_state.email_confirmation:
         st.write(st.session_state.email_confirmation)

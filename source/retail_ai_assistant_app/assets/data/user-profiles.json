@@ -1,0 +1,242 @@
+[
+    {
+        "id": "2303",
+        "username": "user2303",
+        "email": "david.peters@example.com",
+        "first_name": "David",
+        "last_name": "Peters",
+        "addresses": [
+            {
+                "first_name": "David",
+                "last_name": "Peters",
+                "address1": "99963 Foster Alley",
+                "address2": "",
+                "country": "US",
+                "city": "Justinberg",
+                "state": "MO",
+                "zipcode": "65697",
+                "default": true
+            }
+        ],
+        "age": 35,
+        "gender": "M",
+        "persona": "footwear_jewelry_furniture",
+        "discount_persona": "discount_indifferent"
+    },
+    {
+        "id": "4184",
+        "username": "user4184",
+        "email": "william.torres@example.com",
+        "first_name": "William",
+        "last_name": "Torres",
+        "addresses": [
+            {
+                "first_name": "William",
+                "last_name": "Torres",
+                "address1": "1652 Lopez Estates",
+                "address2": "",
+                "country": "US",
+                "city": "West Brianna",
+                "state": "IL",
+                "zipcode": "61975",
+                "default": true
+            }
+        ],
+        "age": 29,
+        "gender": "M",
+        "persona": "footwear_jewelry_furniture",
+        "discount_persona": "lower_priced_products"
+    },
+    {
+        "id": "3201",
+        "username": "user3201",
+        "email": "shane.taylor@example.com",
+        "first_name": "Shane",
+        "last_name": "Taylor",
+        "addresses": [
+            {
+                "first_name": "Shane",
+                "last_name": "Taylor",
+                "address1": "5023 Cole Garden Apt. 853",
+                "address2": "",
+                "country": "US",
+                "city": "Evansville",
+                "state": "OH",
+                "zipcode": "44078",
+                "default": true
+            }
+        ],
+        "age": 37,
+        "gender": "M",
+        "persona": "books_apparel_homedecor",
+        "discount_persona": "all_discounts"
+    },
+    {
+        "id": "715",
+        "username": "user715",
+        "email": "daniel.vincent@example.com",
+        "first_name": "Daniel",
+        "last_name": "Vincent",
+        "addresses": [
+            {
+                "first_name": "Daniel",
+                "last_name": "Vincent",
+                "address1": "01727 Danielle Wall Apt. 282",
+                "address2": "",
+                "country": "US",
+                "city": "Davidchester",
+                "state": "ND",
+                "zipcode": "58242",
+                "default": true
+            }
+        ],
+        "age": 30,
+        "gender": "M",
+        "persona": "beauty_accessories_instruments",
+        "discount_persona": "lower_priced_products"
+    },
+    {
+        "id": "2183",
+        "username": "user2183",
+        "email": "dawn.garcia@example.com",
+        "first_name": "Dawn",
+        "last_name": "Garcia",
+        "addresses": [
+            {
+                "first_name": "Dawn",
+                "last_name": "Garcia",
+                "address1": "7785 Cruz Lodge Apt. 355",
+                "address2": "",
+                "country": "US",
+                "city": "Leeport",
+                "state": "NE",
+                "zipcode": "68025",
+                "default": true
+            }
+        ],
+        "age": 19,
+        "gender": "F",
+        "persona": "homedecor_electronics_outdoors",
+        "discount_persona": "all_discounts"
+    },
+    {
+        "id": "3238",
+        "username": "user3238",
+        "email": "jose.graham@example.com",
+        "first_name": "Jose",
+        "last_name": "Graham",
+        "addresses": [
+            {
+                "first_name": "Jose",
+                "last_name": "Graham",
+                "address1": "433 Osborne Point Suite 909",
+                "address2": "",
+                "country": "US",
+                "city": "West Angela",
+                "state": "SC",
+                "zipcode": "29109",
+                "default": true
+            }
+        ],
+        "age": 59,
+        "gender": "M",
+        "persona": "apparel_footwear_accessories",
+        "discount_persona": "discount_indifferent"
+    },
+    {
+        "id": "4157",
+        "username": "user4157",
+        "email": "monica.hill@example.com",
+        "first_name": "Monica",
+        "last_name": "Hill",
+        "addresses": [
+            {
+                "first_name": "Monica",
+                "last_name": "Hill",
+                "address1": "622 Townsend Stravenue",
+                "address2": "",
+                "country": "US",
+                "city": "Danielmouth",
+                "state": "RI",
+                "zipcode": "02920",
+                "default": true
+            }
+        ],
+        "age": 36,
+        "gender": "F",
+        "persona": "footwear_jewelry_furniture",
+        "discount_persona": "all_discounts"
+    },
+    {
+        "id": "1266",
+        "username": "user1266",
+        "email": "carla.sanchez@example.com",
+        "first_name": "Carla",
+        "last_name": "Sanchez",
+        "addresses": [
+            {
+                "first_name": "Carla",
+                "last_name": "Sanchez",
+                "address1": "075 Ayers Wells Apt. 985",
+                "address2": "",
+                "country": "US",
+                "city": "Hayesmouth",
+                "state": "NE",
+                "zipcode": "68055",
+                "default": true
+            }
+        ],
+        "age": 21,
+        "gender": "F",
+        "persona": "floral_beauty_jewelry",
+        "discount_persona": "lower_priced_products"
+    },
+    {
+        "id": "1364",
+        "username": "user1364",
+        "email": "patricia.hoffman@example.com",
+        "first_name": "Patricia",
+        "last_name": "Hoffman",
+        "addresses": [
+            {
+                "first_name": "Patricia",
+                "last_name": "Hoffman",
+                "address1": "9729 Jones Burg",
+                "address2": "",
+                "country": "US",
+                "city": "North Michaelborough",
+                "state": "CA",
+                "zipcode": "90093",
+                "default": true
+            }
+        ],
+        "age": 39,
+        "gender": "F",
+        "persona": "books_apparel_homedecor",
+        "discount_persona": "lower_priced_products"
+    },
+    {
+        "id": "3135",
+        "username": "user3135",
+        "email": "nicole.andrews@example.com",
+        "first_name": "Nicole",
+        "last_name": "Andrews",
+        "addresses": [
+            {
+                "first_name": "Nicole",
+                "last_name": "Andrews",
+                "address1": "93745 Cole Manor Apt. 554",
+                "address2": "",
+                "country": "US",
+                "city": "Bradleyside",
+                "state": "ID",
+                "zipcode": "83601",
+                "default": true
+            }
+        ],
+        "age": 25,
+        "gender": "F",
+        "persona": "tools_housewares_apparel",
+        "discount_persona": "all_discounts"
+    }
+]
