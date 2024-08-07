@@ -28,11 +28,11 @@ class Config:
         self.cognito_user_pool_id_param = f"/{self.app_name}/cognito/user-pool-id"
         self.cognito_user_pool_domain_param = f"/{self.app_name}/cognito/user-pool-domain"
 
-        self.app_url_param = ''f"/{self.app_name}/app-url"
-        self.product_catalog_kb_id_param = ''f"/{self.app_name}/bedrock/product-catalog-kb-id"
-        self.shopping_agent_id_param = ''f"/{self.app_name}/bedrock/shopping-agent-id"
-        self.shopping_agent_alias_id_param = ''f"/{self.app_name}/bedrock/shopping-agent-alias-id"
-        self.opensearch_endpoint_param = ''f"/{self.app_name}/opensearch/collection-endpoint"
+        self.app_url_param = f"/{self.app_name}/app-url"
+        self.product_catalog_kb_id_param = f"/{self.app_name}/bedrock/product-catalog-kb-id"
+        self.shopping_agent_id_param = f"/{self.app_name}/bedrock/shopping-agent-id"
+        self.shopping_agent_alias_id_param = f"/{self.app_name}/bedrock/shopping-agent-alias-id"
+        self.opensearch_endpoint_param = f"/{self.app_name}/opensearch/collection-endpoint"
 
 def get_config():
     return Config()
