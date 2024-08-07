@@ -21,9 +21,10 @@ from aws_cdk import (
     CfnOutput
 )
 from constructs import Construct
+from lib.config import Config
 
 class EcsAppStack(NestedStack):
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, 
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, 
                  user_pool, user_pool_client, user_pool_domain: str, 
                  application_dns_name: str = None, alb_dns_name : str =None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -62,8 +63,13 @@ class EcsAppStack(NestedStack):
                 "bedrock:InvokeAgent"
             ],
             resources=[
-                f"arn:aws:bedrock:{self.region}:{self.account}:agent-alias/{shopping_agent_id}/*"
-            ]
+                f"arn:aws:bedrock:{self.region}:{self.account}:agent-alias/*"
+            ],
+            conditions={
+                "StringEquals": {
+                    "aws:ResourceTag/AppName": config.bedrock_agent_tags['AppName']
+                }
+            }
         ))
 
         # Security Groups
@@ -174,20 +180,38 @@ class EcsAppStack(NestedStack):
             f"{app_name}-container",
             image=ecs.ContainerImage.from_docker_image_asset(docker_image),
             environment={
-                "STREAMLIT_SERVER_PORT": "8501",
-                "USER_POOL_ID": user_pool.user_pool_id,
-                "USER_POOL_CLIENT_ID": user_pool_client.user_pool_client_id,
-                "USER_POOL_DOMAIN": user_pool_domain.base_url()
+                "STREAMLIT_SERVER_PORT": "8501"
             },
             logging=ecs.LogDrivers.aws_logs(
                 stream_prefix=f"ecs/{app_name}-{self.region}",
                 log_retention=logs.RetentionDays.TWO_WEEKS
             ),
             secrets={
+                "USER_POOL_ID": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "UserPoolId",
+                        parameter_name= config.cognito_user_pool_id_param,
+                        version=1
+                    )
+                ),
+                "USER_POOL_DOMAIN": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "UserPoolDomain",
+                        parameter_name= config.cognito_user_pool_domain_param,
+                        version=1
+                    )
+                ),
+                "USER_POOL_CLIENT_ID": ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "ClientId",
+                        parameter_name= config.cognito_client_id_param,
+                        version=1
+                    )
+                ),
                 "USER_POOL_CLIENT_SECRET": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "ClientSecret",
-                        parameter_name= config.cognitoclientsecret_param,
+                        parameter_name= config.cognito_client_secret_param,
                         version=1
                     )
                 ),

@@ -57,6 +57,13 @@ def initialize_session_state():
     st.session_state.welcome_message = "Hello! Welcome to AnyCompanyCommerce. I'm your AI shopping assistant here to help you find products that match your needs and interests. How can I assist you today?"
     st.session_state.welcome_suppport_message = "Hello! Welcome to AnyCompanyCommerce. How can I assist you today with any questions or concerns regarding our policies or services?"
 
+    if 'messages' in st.session_state and st.session_state.messages and  len(st.session_state.messages) > 1:
+        GetAnswers(' ', st.session_state.session_id, 
+                    st.session_state.bedrock_agent, 
+                    st.session_state.config.SHOPPING_AGENT_ID, 
+                    st.session_state.config.SHOPPING_AGENT_ALIAS_ID,
+                    st.session_state.agent_session_state, end_session=True)
+        
     if 'config' not in st.session_state:
         st.session_state.config = Config()
     if 'logger' not in st.session_state:
@@ -113,9 +120,9 @@ def load_random_user_profiles():
         print(f"An unexpected error occurred: {str(e)}")
         return None
 
-def GetAnswers(query, session_id, assistant, agent_id, agent_alias_id, agent_session_state):
+def GetAnswers(query, session_id, assistant, agent_id, agent_alias_id, agent_session_state, end_session: bool = False):
 
-    answer = assistant.invoke_agent(agent_id, agent_alias_id, session_id, agent_session_state, query)
+    answer = assistant.invoke_agent(agent_id, agent_alias_id, session_id, agent_session_state, query, end_session)
     st.session_state.answer = answer
 
     return answer

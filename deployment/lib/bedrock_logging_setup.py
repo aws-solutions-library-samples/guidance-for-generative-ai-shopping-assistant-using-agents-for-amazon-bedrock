@@ -10,10 +10,11 @@ from aws_cdk import (
     RemovalPolicy
 )
 from constructs import Construct
+from lib.config import Config
 
 class BedrockLoggingStack(NestedStack):
 
-    def __init__(self, scope: Construct, construct_id: str, config, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, config: Config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
 
@@ -100,6 +101,12 @@ class BedrockLoggingStack(NestedStack):
         # Define a custom resource to make an AWS SDK call to the Bedrock API
         model_logging_cr = cr.AwsCustomResource(self, "ModelLoggingCustomResource",
             on_create=cr.AwsSdkCall(
+                service="Bedrock",
+                action="putModelInvocationLoggingConfiguration",
+                parameters=model_logging_params,
+                physical_resource_id=cr.PhysicalResourceId.of("BedrockModelInvocationLogging")
+            ),
+            on_update=cr.AwsSdkCall(
                 service="Bedrock",
                 action="putModelInvocationLoggingConfiguration",
                 parameters=model_logging_params,

@@ -3,9 +3,10 @@ from aws_cdk import Stack
 from constructs import Construct
 from lib.cognito_stack import CognitoStack
 from lib.ecs_app_stack import EcsAppStack
+from lib.config import Config
 
 class RetailAppAIAssistantStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
         random_hash = hashlib.sha256(f"{config.app_name}-{self.region}".encode()).hexdigest()[:8]

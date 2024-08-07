@@ -11,10 +11,11 @@ from aws_cdk import (
     CfnOutput,
     RemovalPolicy
 )
+from lib.config import Config
 from constructs import Construct
 
 class CognitoStack(NestedStack):
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, application_dns_name: str = None, alb_dns_name : str =None, **kwargs)  -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, application_dns_name: str = None, alb_dns_name : str =None, **kwargs)  -> None:
         super().__init__(scope, construct_id, **kwargs)
 
 
@@ -88,13 +89,37 @@ class CognitoStack(NestedStack):
                 "http://localhost:8501"
             ]
 
-        # Store client secret in Parameter Store as a simple string
+        # Store cognito propoerties in Parameter Store as a simple string
         self.client_secret_param = ssm.StringParameter(
             self,
             f"{app_name}-client-secret",
-            parameter_name= config.cognitoclientsecret_param,
+            parameter_name= config.cognito_client_secret_param,
             string_value=self.user_pool_client.user_pool_client_secret.unsafe_unwrap(),
             description="Cognito User Pool Client Secret"
+        )
+
+        self.client_secret_param = ssm.StringParameter(
+            self,
+            f"{app_name}-client-id",
+            parameter_name= config.cognito_client_id_param,
+            string_value=self.user_pool_client.user_pool_client_id,
+            description="Cognito User Pool Client Id"
+        )
+
+        self.client_secret_param = ssm.StringParameter(
+            self,
+            f"{app_name}-user-pool-id",
+            parameter_name= config.cognito_user_pool_id_param,
+            string_value=self.user_pool.user_pool_id,
+            description="Cognito User Pool Id"
+        )
+
+        self.client_secret_param = ssm.StringParameter(
+            self,
+            f"{app_name}-user-pool-domain",
+            parameter_name= config.cognito_user_pool_domain_param,
+            string_value=self.user_pool_domain.base_url(),
+            description="Cognito User Pool Domain"
         )
 
         # Create demo user if default_user_email is provided

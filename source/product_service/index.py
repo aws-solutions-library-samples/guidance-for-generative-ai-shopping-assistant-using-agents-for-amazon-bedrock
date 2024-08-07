@@ -22,17 +22,20 @@ def get_ssm_parameter(param_name):
         req.add_header('X-Aws-Parameters-Secrets-Token', aws_session_token)
         response = urllib.request.urlopen(req)
         config = response.read()
-        print('Cinfig', json.loads(config))
-        return json.loads(config)['Parameter']['Value']
+
+        result = json.loads(config)['Parameter']['Value']
+        logger.info(f"Parameter {param_name}, value {result} ")
+        
+        return result
     except urllib.error.HTTPError as e:
         if e.code == 404:  # Parameter not found
-            print(f"Parameter {param_name} not found. Returning empty value.")
+            logger.error(f"Parameter {param_name} not found. Returning empty value.")
             return ""
         else:
-            print(f"An error occurred while retrieving parameter {param_name}: {e}")
+            logger.error(f"An error occurred while retrieving parameter {param_name}: {e}")
             return ""
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}")
         return ""
 
 def download_file_from_s3(bucket, key):
@@ -65,19 +68,20 @@ def create_response(status_code, body):
         'body': json.dumps(body)
     }
 
-def get_product_by_id(product_id, app_url, image_url):
-    product = next((p for p in PRODUCTS if p['id'] == product_id), None)
+def get_product_by_id(product_id, app_url, cloudfront_url):
+    product = next((p.copy() for p in PRODUCTS if p['id'] == product_id), None)
     if product:
-        product['image'] = f"{image_url}/{product['image']}"
+        product['image'] = f"{cloudfront_url}/images/{product['image']}"
         product['url'] = f"{app_url}/product/?product_id={product['id']}"
         return create_response(200, product)
     else:
         return create_response(404, {'message': 'Product not found'})
 
-def get_featured_products(app_url, image_url):
-    featured_products = [p for p in PRODUCTS if p.get('featured', True)]
+
+def get_featured_products(app_url, cloudfront_url):
+    featured_products = [p.copy() for p in PRODUCTS if p.get('featured', True)]
     for product in featured_products:
-        product['image'] = f"{image_url}/{product['image']}"
+        product['image'] = f"{cloudfront_url}/images/{product['image']}"
         product['url'] = f"{app_url}/product/?product_id={product['id']}"
     return create_response(200, featured_products)
 
@@ -93,12 +97,11 @@ def handler(event, context):
     
     cloudfront_url = get_ssm_parameter(os.environ['CLOUDFRONT_URL_PARAM'])
     app_url = get_ssm_parameter(os.environ['APP_URL_PARAM'])
-    image_url= f"{cloudfront_url}/images"
 
     if path == '/products/id/{productId}' and http_method == 'GET':
         product_id = event['pathParameters']['productId']
-        return get_product_by_id(product_id, app_url, image_url)
+        return get_product_by_id(product_id, app_url, cloudfront_url)
     elif path == '/products/featured' and http_method == 'GET':
-        return get_featured_products(app_url, image_url)
+        return get_featured_products(app_url, cloudfront_url)
     else:
         return create_response(404, {'message': 'Resource Not Found'})

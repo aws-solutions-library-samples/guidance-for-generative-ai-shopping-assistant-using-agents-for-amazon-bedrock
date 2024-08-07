@@ -10,10 +10,11 @@ from aws_cdk import (
     CfnOutput
 )
 from constructs import Construct
+from lib.config import Config
 
 class BedrockShoppingAgentStack(NestedStack):
 
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, product_kb_id, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, product_kb_id, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
@@ -94,6 +95,7 @@ class BedrockShoppingAgentStack(NestedStack):
             agent_resource_role_arn=agent_role.role_arn,
             description="Shopping assistant agent using Bedrock",
             foundation_model="anthropic.claude-3-sonnet-20240229-v1:0",
+            tags=config.bedrock_agent_tags,
             instruction=agent_instruction,
             auto_prepare=True,
             knowledge_bases=[
@@ -157,7 +159,8 @@ class BedrockShoppingAgentStack(NestedStack):
             self, "ShoppingAgentPRODAlias",
             agent_id=agent.attr_agent_id,
             agent_alias_name=f"PROD",
-            description="Alias for production agent invocation"
+            description="Alias for production agent invocation",
+            tags=config.bedrock_agent_tags
         )
 
         # Add resource-based policy to allow Bedrock to invoke the Lambda function

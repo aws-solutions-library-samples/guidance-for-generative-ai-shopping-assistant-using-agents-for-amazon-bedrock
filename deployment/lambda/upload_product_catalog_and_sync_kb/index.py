@@ -2,12 +2,38 @@ import json
 import os
 import boto3
 import logging
+import urllib
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 s3 = boto3.client('s3')
 bedrock_agent = boto3.client('bedrock-agent')
+aws_session_token = os.environ.get('AWS_SESSION_TOKEN')
+parameters_http_port = 2773
+
+def get_ssm_parameter(param_name):
+    try:
+        # Encode the parameter name
+        encoded_param_name = urllib.parse.quote(param_name)
+
+        # Retrieve parameter from Parameter Store using extension cache
+        req = urllib.request.Request(f'http://localhost:2773/systemsmanager/parameters/get?name={encoded_param_name}')
+        req.add_header('X-Aws-Parameters-Secrets-Token', aws_session_token)
+        response = urllib.request.urlopen(req)
+        config = response.read()
+
+        return json.loads(config)['Parameter']['Value']
+    except urllib.error.HTTPError as e:
+        if e.code == 404:  # Parameter not found
+            logger.error(f"Parameter {param_name} not found. Returning empty value.")
+            return ""
+        else:
+            logger.error(f"An error occurred while retrieving parameter {param_name}: {e}")
+            return ""
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        return ""
 
 def upload_product_files(source_bucket, cloudfront_url, app_url, bucket_prefix, products):
     logger.info(f"Starting to upload product files to bucket: {source_bucket}")
@@ -69,11 +95,11 @@ def start_knowledge_base_ingestion(knowledge_base_id, data_source_id):
 
 def handler(event, context):
     source_bucket = os.environ['BUCKET_NAME']
-    cloudfront_url = os.environ['CLOUDFRONT_URL']
-    app_url = os.environ['APP_URL']
     bucket_prefix = os.environ['BUCKET_PREFIX']
     knowledge_base_id = os.environ.get('KNOWLEDGE_BASE_ID')
     data_source_id = os.environ.get('DATA_SOURCE_ID')
+    cloudfront_url = get_ssm_parameter(os.environ['CLOUDFRONT_URL_PARAM'])
+    app_url = get_ssm_parameter(os.environ['APP_URL_PARAM'])
 
     logger.info(f"Handler started with bucket: {source_bucket}, prefix: {bucket_prefix}")
 

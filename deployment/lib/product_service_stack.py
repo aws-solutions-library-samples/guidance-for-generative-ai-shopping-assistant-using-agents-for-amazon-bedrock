@@ -13,10 +13,11 @@ from aws_cdk import (
     Duration
 )
 from constructs import Construct
+from lib.config import Config
 
 class ProductServiceStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, app_name: str, config, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Path to your lambda function code
@@ -54,6 +55,11 @@ class ProductServiceStack(Stack):
             actions=["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"],
             resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/*"]
         ))
+
+        # Grant the Lambda function permission to put logs in CloudWatch
+        lambda_role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
+        )
 
         # Create the lambda function
         product_service_lambda = lambda_.Function(

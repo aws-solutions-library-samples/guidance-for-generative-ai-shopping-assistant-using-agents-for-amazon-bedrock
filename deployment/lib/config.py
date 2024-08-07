@@ -15,11 +15,17 @@ class Config:
         self.bedrock_shopping_agent_alias = "PROD"
         self.product_vector_index_name="product-catalog"
         self.faq_vector_index_name="faq-policies"
+        self.bedrock_agent_tags = {'AppName':f'{self.app_name}'}
 
         # Add the SSM param names
         self.cloudfront_url_param = f"/{self.app_name}/cloudfront-url"
         self.apigateway_url_param = f"/{self.app_name}/apigateway-url"
-        self.cognitoclientsecret_param = f"/{self.app_name}/cognito-client-secret"
+
+        self.cognito_client_secret_param = f"/{self.app_name}/cognito-client-secret"
+        self.cognito_client_id_param = f"/{self.app_name}/cognito/client-id"
+        self.cognito_user_pool_id_param = f"/{self.app_name}/cognito/user-pool-id"
+        self.cognito_user_pool_domain_param = f"/{self.app_name}/cognito/user-pool-domain"
+
         self.app_url_param = ''f"/{self.app_name}/app-url"
         self.product_catalog_kb_id_param = ''f"/{self.app_name}/product-catalog-kb-id"
         self.shopping_agent_id_param = ''f"/{self.app_name}/bedrock-shopping-agent-id"
