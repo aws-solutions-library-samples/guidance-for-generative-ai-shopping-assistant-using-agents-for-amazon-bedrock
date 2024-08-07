@@ -131,11 +131,16 @@ def get_cognito_logout_url():
     st.write('get_cognito_logout_url', url)
     return url
 
-def authenticate_user():
-    
-    """Authenticate user based on ALB headers or OAuth2 flow."""
-    initialize_session_vars()
+def add_logout():
+    st.sidebar.button('Logout', on_click=logout)
 
+def authenticate_user():
+    initialize_session_vars()    
+    
+    # Cognito Hosted UI Auth is disabled on deployed ECS App if custom domain is not provided
+    if not st.session_state.config.REDIRECT_URI:
+        return True
+    
     # Validate logout state after redirecting from Cognito Login page using logout redirect_uri
     query_params = st.query_params.to_dict()
     if 'state' in query_params:
@@ -171,6 +176,7 @@ def authenticate_user():
                 st.session_state.access_token = access_token
                 st.session_state.user_profile = decode_jwt(id_token)
                 st.session_state.user_authenticated = True
+                add_logout()
             else:
                 reset_session_state()
                 return False
@@ -178,40 +184,28 @@ def authenticate_user():
             st.session_state.user_profile = decode_jwt(id_token)
             st.session_state.access_token = access_token
             st.session_state.user_authenticated = True
+            add_logout()
             return True
-
-    # Check for ALB authentication headers
-    headers = st.context.headers
     
+    """Login user based on ALB authentication headers for Cognito Hosted UI on AWS."""
+    headers = st.context.headers
     if 'X-Amzn-Oidc-Data' in headers and 'X-Amzn-Oidc-Accesstoken' in headers:
-        # if st.session_state.auth_status != 'logged_out':
-            
-        # else:
-        #     return False
-        st.write('In headers')
-
         oidc_data = headers['X-Amzn-Oidc-Data']
         access_token = headers['X-Amzn-Oidc-Accesstoken']
-        st.write('headers', oidc_data, access_token)
+        # st.write('headers', oidc_data, access_token)
         
+        st.session_state.user_authenticated = True
+        st.session_state.auth_status = 'logged_in'
+        add_logout()
         try:
-            if not st.session_state.user_authenticated or st.session_state.access_token != access_token:
-                st.write('token set userfingo')
+            if st.session_state.access_token != access_token:
                 user_info = get_info_from_amz_header(oidc_data)
                 st.write('user info', user_info)
                 st.session_state.user_profile = user_info
                 st.session_state.access_token = access_token
-                st.session_state.user_authenticated = True
-                st.session_state.auth_status = 'logged_in'
-            elif is_token_expired(access_token):
-                st.write('token expired')
-                reset_session_state()
-            return st.session_state.user_authenticated
-
         except Exception as e:
-            reset_session_state()
-            return False
- 
+            print('Error fecthing userInfo from header X-Amzn-Oidc-Data:', e)
+        return st.session_state.user_authenticated
     
     return False
 

@@ -49,16 +49,25 @@ class CognitoStack(NestedStack):
             )
         )
 
-        oauth_settings = cognito.OAuthSettings(
+        # Add localhost to test Cognito Auth locally
+        callback_urls=[ "http://localhost:8501"]
+        logout_urls=["http://localhost:8501"]
+
+        # Cognito Hosted UI authentication can only be added to ECS app if custom domain is provided
+        if config.domain_name:
             callback_urls=[
-                    f"{self.app_url}/oauth2/idpresponse", 
-                    self.app_url,
-                    "http://localhost:8501"
-                ],
+                f"{self.app_url}/oauth2/idpresponse", 
+                self.app_url,
+                "http://localhost:8501"
+            ]
             logout_urls=[
-                    self.app_url,
-                    "http://localhost:8501"
-                ],
+                self.app_url,
+                "http://localhost:8501"
+            ]
+
+        oauth_settings = cognito.OAuthSettings(
+            callback_urls=callback_urls,
+            logout_urls= logout_urls,
             flows=cognito.OAuthFlows(authorization_code_grant=True),
             scopes=[
                 cognito.OAuthScope.OPENID,
@@ -84,10 +93,7 @@ class CognitoStack(NestedStack):
         
         # Logout URLs and redirect URIs can't be set in CDK constructs natively ...yet
         user_pool_client_cf: cognito.CfnUserPoolClient = self.user_pool_client.node.default_child
-        user_pool_client_cf.logout_ur_ls = [
-                self.app_url,
-                "http://localhost:8501"
-            ]
+        user_pool_client_cf.logout_ur_ls = logout_urls
 
         # Store cognito propoerties in Parameter Store as a simple string
         self.client_secret_param = ssm.StringParameter(
@@ -140,7 +146,7 @@ class CognitoStack(NestedStack):
             self,
             "CreateCognitoUser",
             function_name=f"{app_name}-create-cognito-user",
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=lambda_.Code.from_asset(lambda_code_path),
             environment={

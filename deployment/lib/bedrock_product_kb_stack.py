@@ -27,10 +27,11 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         self.app_name= app_name
         self.random_hash = hashlib.sha256(f"{self.app_name}-{self.region}".encode()).hexdigest()[:8]
 
+        # Vector Configurations for Knowledge Base and Amazon OpenSearch Serverless vector store
         index_name = config.product_vector_index_name
         vector_field = 'product-details'
-        text_field="textField"
-        metadata_field="metadataField"
+        text_field="AMAZON_BEDROCK_TEXT_CHUNK"
+        metadata_field="AMAZON_BEDROCK_METADATA"
         embeddings_model_id='amazon.titan-embed-text-v1'
         vector_dimension = 1536 # For Titan text embedding v1. 
 
@@ -53,6 +54,19 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
        
         # Allow permission to access objects in Amazon S3 data source.
         data_source_bucket.grant_read(self.product_knowledge_base_role)
+        
+        # Add trust relationship to Knowledge Base Role
+        policy = self.product_knowledge_base_role.assume_role_policy.add_statements(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                principals=[iam.ServicePrincipal("bedrock.amazonaws.com")],
+                actions=["sts:AssumeRole"],
+                conditions={
+                    "StringEquals": {"aws:SourceAccount": self.account},
+                    "ArnLike": {"AWS:SourceArn": f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/*"}
+                }
+            )
+        )
         
         # Allow permission to access data in Opensearch vector store and call Api.
         data_access_policy = self.add_aoss_access_policiy(opensearch_collection_arn, opensearch_collection_name, index_name, self.product_knowledge_base_role)
@@ -78,8 +92,6 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
                 opensearch_serverless_configuration=bedrock.CfnKnowledgeBase.OpenSearchServerlessConfigurationProperty(
                     collection_arn=opensearch_collection_arn,
                     field_mapping=bedrock.CfnKnowledgeBase.OpenSearchServerlessFieldMappingProperty(
-                        # metadata_field="AMAZON_BEDROCK_METADATA",
-                        # text_field="AMAZON_BEDROCK_TEXT_CHUNK",
                         text_field=text_field,
                         metadata_field= metadata_field,
                         vector_field= vector_field
@@ -90,19 +102,6 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         )
 
         self.knowledge_base_id = product_catalog_knowledge_base.attr_knowledge_base_id
-
-        # Add trust relationship to Knowledge Base Role
-        policy = self.product_knowledge_base_role.assume_role_policy.add_statements(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                principals=[iam.ServicePrincipal("bedrock.amazonaws.com")],
-                actions=["sts:AssumeRole"],
-                conditions={
-                    "StringEquals": {"aws:SourceAccount": self.account},
-                    "ArnLike": {"AWS:SourceArn": f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/*"}
-                }
-            )
-        )
 
         # Create S3 DataSource for Product Knowledge Base
         product_catalog_data_source=bedrock.CfnDataSource(
@@ -123,6 +122,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         # Enable Knowledge Base Application Logs to Cloudwatch
         cloudwatch_logging = self.setup_knowledge_base_logging( product_catalog_knowledge_base.name, product_catalog_knowledge_base.attr_knowledge_base_arn)
 
+        # Add Stack dependencies
         aoss_index.node.add_dependency(data_access_policy)
         product_catalog_knowledge_base.node.add_dependency(aoss_index)
         product_catalog_data_source.node.add_dependency(product_catalog_knowledge_base)
@@ -196,12 +196,12 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
             self,
             f"{self.app_name}-create-opensearch-index",
             function_name=f"{self.app_name}-create-opensearch-index",
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=lambda_.Code.from_asset(
                 lambda_code_path,
                     bundling= BundlingOptions(
-                        image=lambda_.Runtime.PYTHON_3_9.bundling_image,
+                        image=lambda_.Runtime.PYTHON_3_12.bundling_image,
                         command=[
                             "bash", "-c",
                             "pip install --no-cache -r requirements.txt -t /asset-output && cp -rT . /asset-output"

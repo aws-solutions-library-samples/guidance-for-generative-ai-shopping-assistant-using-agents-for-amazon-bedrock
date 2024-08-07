@@ -755,7 +755,7 @@ def main():
 if __name__ == '__main__':
 
     is_authenticated = authenticate_user()
-    if not is_authenticated:
+    if  not is_authenticated:
         st.switch_page('Home.py')
     
     agent_title= '🛍️Retail AI Shopping Agent'

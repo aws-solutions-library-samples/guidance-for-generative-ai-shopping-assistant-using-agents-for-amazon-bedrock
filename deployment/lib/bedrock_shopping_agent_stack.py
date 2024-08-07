@@ -19,9 +19,6 @@ class BedrockShoppingAgentStack(NestedStack):
 
         random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
 
-        # Read API Gateway URL from SSM Parameter Store
-        api_url = ssm.StringParameter.value_from_lookup(self, config.apigateway_url_param)
-
         shopping_agent_path = os.path.join(os.path.dirname(__file__), "..", "bedrock_agent", "shopping_agent")
 
         # Read orchestration advanced prompt 
@@ -42,17 +39,39 @@ class BedrockShoppingAgentStack(NestedStack):
             
         # Path to your lambda function code
         lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "bedrock_agent", "shopping_agent", "action_groups" , "create_order_actions", "lambda")
+        # Create the IAM role for the Lambda function
+        create_order_lambda_role = iam.Role(
+            self, "CreateOrderLambdaRole",
+            role_name= f"{random_hash}-createorder-actions-role",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com")
+        )
+        # Grant the Lambda function permission to read from SSM Parameter Store
+        create_order_lambda_role.add_to_policy(iam.PolicyStatement(
+            actions=["ssm:GetParameter"],
+            resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{config.app_name}/*"]
+        ))
 
+        # Grant the Lambda function permission to put logs in CloudWatch
+        create_order_lambda_role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
+        )
         # Create Lambda function for CreateOrder action
         create_order_lambda = _lambda.Function(
             self, "CreateOrderLambda",
             function_name=f"{app_name}-createorder-actions",
-            runtime=_lambda.Runtime.PYTHON_3_9,
+            role= create_order_lambda_role,
+            runtime=_lambda.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=_lambda.Code.from_asset(lambda_code_path),
             environment={
-                "API_URL": api_url
+                "API_URL_PARAM": config.apigateway_url_param
             },
+            # Enable Lambda Extension Layer for reading SSM Parameter and Secrets from local cache
+            # Update ARN based on region & architecture here: https://docs.aws.amazon.com/systems-manager/latest/userguide/ps-integration-lambda-extensions.html
+            layers=[_lambda.LayerVersion.from_layer_version_arn(
+                self, "ParamterStoreLambdaExtensionLayer",
+                layer_version_arn="arn:aws:lambda:us-west-2:345057560386:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11"
+            )],
             timeout=Duration.seconds(30),
             memory_size=256
         )

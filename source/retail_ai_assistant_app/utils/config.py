@@ -8,10 +8,10 @@ class Config:
     def __init__(self):
         load_dotenv()
 
-        self.COGNITO_DOMAIN = os.environ.get("USER_POOL_DOMAIN")
-        self.COGNITO_CLIENT_ID = os.environ.get("USER_POOL_CLIENT_ID")
-        self.COGNITO_CLIENT_SECRET = os.environ.get("USER_POOL_CLIENT_SECRET")
-        self.REDIRECT_URI = os.environ.get("APP_URL")
+        self.COGNITO_DOMAIN = os.environ.get("USER_POOL_DOMAIN","")
+        self.COGNITO_CLIENT_ID = os.environ.get("USER_POOL_CLIENT_ID","")
+        self.COGNITO_CLIENT_SECRET = os.environ.get("USER_POOL_CLIENT_SECRET","")
+        self.REDIRECT_URI = os.environ.get("REDIRECT_URI", None)
         self.SHOPPING_AGENT_ALIAS_ID = os.environ.get("SHOPPING_AGENT_ALIAS_ID", "TSTALIASID")
         self.SHOPPING_AGENT_ID = os.environ.get("SHOPPING_AGENT_ID")
         self.API_URL = os.environ.get("API_URL")

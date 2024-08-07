@@ -43,9 +43,6 @@ def main():
         st.write("Hello, you are logged in!")
         st.write("Authenticated User Info:")
         st.write(st.session_state.user_profile)
-
-        if st.button('Logout'):
-            logout()
     else:
         #st.write("You are not authenticated.")
         login_url = get_cognito_login_url()

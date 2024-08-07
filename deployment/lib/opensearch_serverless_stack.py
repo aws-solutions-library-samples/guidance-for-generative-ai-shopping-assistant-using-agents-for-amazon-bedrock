@@ -17,40 +17,6 @@ class OpenSearchServerlessStack(NestedStack):
         random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
         self.opensearch_collection_name = f"{app_name}-kb-{random_hash}"
         
-        # # Create data access policy for the collection
-        # data_access_policy = opensearchserverless.CfnAccessPolicy(
-        #     self, "CollectionDataAccessPolicy",
-        #     name=f"{opensearch_collection.name}-data-access-policy",
-        #     description="Data access policy for Knowledge Base collection",
-        #     policy=json.dumps({
-        #         "Description": "Allow access to the collection and Indexes",
-        #         "Rules": [
-        #             {
-        #                 "ResourceType": "index",
-        #                 "Resource": [f"index/{opensearch_collection.name}/*"],
-        #                 "Permission": [
-        #                     "aoss:CreateIndex",
-        #                     "aoss:UpdateIndex",
-        #                     "aoss:DescribeIndex",
-        #                     "aoss:ReadDocument",
-        #                     "aoss:WriteDocument"
-        #                 ]
-        #             },
-        #             {
-        #                 "ResourceType": "collection",
-        #                 "Resource": [f"collection/{opensearch_collection.name}"],
-        #                 "Permission": [
-        #                     "aoss:CreateCollectionItems",
-        #                     "aoss:UpdateCollectionItems",
-        #                     "aoss:DescribeCollectionItems"
-        #                 ]
-        #             }
-        #         ],
-        #         "Principal": knowledgebase_arn_list  # Bedrock KnowledgeBases role to give access to
-        #     }),
-        #     type="data"
-        # )
-
         # Create network policy for the collection with public access
         network_policy = opensearchserverless.CfnSecurityPolicy(
             self, "CollectionNetworkPolicy",

@@ -64,7 +64,7 @@ class ProductServiceStack(Stack):
         # Create the lambda function
         product_service_lambda = lambda_.Function(
             self, "ProductServiceLambda",
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             function_name=f"{app_name}-product-service",
             role= lambda_role,
             handler="index.handler",

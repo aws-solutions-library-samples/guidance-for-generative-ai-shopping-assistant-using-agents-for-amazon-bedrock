@@ -114,24 +114,74 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 ## Deployment Steps (required)
 
-Deployment steps must be numbered, comprehensive, and usable to customers at any level of AWS expertise. The steps must include the precise commands to run, and describe the action it performs.
+1. **Region Selection**
+   - This solution must be deployed in regions where Amazon Bedrock model Anthropic Claude Sonnet 3 and Amazon OpenSearch Serverless are available.
+   - The preferred regions for deployment are US East (N. Virginia) `us-east-1` and US West (Oregon) `us-west-2`.
+   - Check AWS regional service availability [here](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/).
 
-* All steps must be numbered.
-* If the step requires manual actions from the AWS console, include a screenshot if possible.
-* The steps must start with the following command to clone the repo. ```git clone xxxxxxx```
-* If applicable, provide instructions to create the Python virtual environment, and installing the packages using ```requirement.txt```.
-* If applicable, provide instructions to capture the deployed resource ARN or ID using the CLI command (recommended), or console action.
+2. **Model Access**
+   - Request access for Anthropic Claude Sonnet 3 and Amazon Titan embedding models from the AWS Management Console.
+   - Follow the steps in the [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) to request model access.
 
- 
-**Example:**
+3. **Prerequisites**
+   - Ensure you have the following installed:
+     - Python 3.12
+     - AWS CLI version 2.15.30 or higher
+     - AWS CDK version 2.150.0 or higher
+     - Docker (running locally)
+     - IAM user or credentials with permissions to create resources in the target AWS account and region
 
-1. Clone the repo using command ```git clone xxxxxxxxxx```
-2. cd to the repo folder ```cd <repo-name>```
-3. Install packages in requirements using command ```pip install requirement.txt```
-4. Edit content of **file-name** and replace **s3-bucket** with the bucket name in your account.
-5. Run this command to deploy the stack ```cdk deploy``` 
-6. Capture the domain name created by running this CLI command ```aws apigateway ............```
+4. **Setup AWS Credentials**
+   - Configure your AWS credentials by running:
+     ```bash
+     aws configure
+     ```
 
+5. **CDK Bootstrap**
+   - Bootstrap the AWS CDK in your AWS account:
+     ```bash
+     cdk bootstrap aws://<ACCOUNT-NUMBER>/<REGION>
+     ```
+   - For more details, refer to the [AWS CDK Workshop](https://cdkworkshop.com/20-typescript/20-create-project/500-deploy.html).
+
+6. **Clone the Repository**
+   - Clone the repository using the following command:
+     ```bash
+     git clone <repository-url>
+     cd <repository-name>/deployment
+     ```
+
+7. **Install Dependencies**
+   - Create a Python virtual environment and install required packages:
+     ```bash
+     python3 -m venv .venv
+     source .venv/bin/activate  # On Windows, use `.venv\Scripts\activate`
+     pip install -r requirements.txt
+     ```
+
+8. **Deploy All Stacks**
+   - Deploy all stacks defined in the `app.py`:
+     ```bash
+     cdk deploy --all
+     ```
+
+9. **Stack Summary**
+   - The `app.py` file defines the following stacks:
+     - **S3CloudFrontStack**: Sets up Amazon CloudFront distribution and Amazon S3 bucket for image hosting.
+     - **RetailAIAssistantStack**: Deploys the core AI assistant infrastructure.
+     - **ProductServiceStack**: Creates the product service API and related resources.
+     - **RetailShoppingAgentStack**: Implements the retail shopping agent functionality.
+   - Dependencies are set to ensure proper resource creation order.
+
+10. **Post-Deployment Setup**
+    - After successful deployment, you may need to perform additional setup steps such as:
+      - Configuring the Amazon Bedrock agent with the deployed resources.
+      - Uploading initial product data to the knowledge base.
+      - Setting up any required environment variables or configuration files.
+
+11. **Verification**
+    - Verify the deployment by checking the AWS CloudFormation console for the status of all stacks.
+    - Ensure all resources are created successfully in the specified region.
 
 
 ## Deployment Validation  (required)

@@ -96,18 +96,11 @@ class S3CloudFrontStack(Stack):
             self,
             "UploadProductImages",
             function_name=f"{self.app_name}-upload-product-images",
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
             ephemeral_storage_size=Size.mebibytes(2048),
             code=lambda_.Code.from_asset(
-                self.lambda_code_path,
-                bundling= BundlingOptions(
-                    image=lambda_.Runtime.PYTHON_3_9.bundling_image,
-                    command=[
-                        "bash", "-c",
-                        "pip install --no-cache -r requirements.txt -t /asset-output && cp -rT . /asset-output"
-                    ]
-                ),
+                self.lambda_code_path
             ),
             environment={
                 "BUCKET_NAME": self.bucket.bucket_name,

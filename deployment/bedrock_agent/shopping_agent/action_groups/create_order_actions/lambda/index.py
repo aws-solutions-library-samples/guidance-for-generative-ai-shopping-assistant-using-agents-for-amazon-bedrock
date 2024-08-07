@@ -2,24 +2,55 @@ import json
 import urllib.request
 import os
 import uuid
+import logging
 
-# Get the API Gateway URL from the environment variable
-apigateway_url = os.environ.get('API_URL', '')
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 
 headers = {
     'Content-Type': 'application/json'
 }
 
+aws_session_token = os.environ.get('AWS_SESSION_TOKEN')
+parameters_http_port = 2773
+
+def get_ssm_parameter(param_name):
+    try:
+        # Encode the parameter name
+        encoded_param_name = urllib.parse.quote(param_name)
+
+        # Retrieve parameter from Parameter Store using extension cache
+        req = urllib.request.Request(f'http://localhost:2773/systemsmanager/parameters/get?name={encoded_param_name}')
+        req.add_header('X-Aws-Parameters-Secrets-Token', aws_session_token)
+        response = urllib.request.urlopen(req)
+        config = response.read()
+
+        return json.loads(config)['Parameter']['Value']
+    except urllib.error.HTTPError as e:
+        if e.code == 404:  # Parameter not found
+            logger.error(f"Parameter {param_name} not found. Returning empty value.")
+            return ""
+        else:
+            logger.error(f"An error occurred while retrieving parameter {param_name}: {e}")
+            return ""
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        return ""
+
 def handler(event, context):
-    print(event)
+    logging.info(event)
     action = event['actionGroup']
     api_path = event['apiPath']
     http_method = event['httpMethod']
+    
+    # Get API Gateway URL from environment variable or SSM Parameter Store
+    apigateway_url =  os.environ.get('API_URL', get_ssm_parameter(os.environ.get('API_URL_PARAM')))
 
     if api_path == "/orders" and http_method == "POST":
         body = create_order(event)
     elif api_path == "/products/{productId}/inventory" and http_method == "GET":
-        body = get_product_inventory(event)
+        body = get_product_inventory(event, apigateway_url)
     elif api_path == "/orders/{orderId}/sendEmail" and http_method == "POST":
         body = send_order_confirmation_email(event)
     else:
@@ -50,14 +81,14 @@ def get_named_property(event, name):
         event['requestBody']['content']['application/json']['properties']
         if item['name'] == name)['value']
 
-def invoke_url(path, method='GET', data=None):
-    url = apigateway_url + path
+def invoke_url(url, path, method='GET', data=None):
+    url = url + path
     req = urllib.request.Request(url, headers=headers, method=method, data=data)
     with urllib.request.urlopen(req) as response:
         return json.loads(response.read())
 
-def get_product_inventory(event):
-    return invoke_url('products/id/' + get_named_parameter(event, 'productId'))
+def get_product_inventory(event, apigateway_url):
+    return invoke_url(apigateway_url, 'products/id/' + get_named_parameter(event, 'productId'))
 
 def create_order(event):
     email = get_named_property(event,"email")

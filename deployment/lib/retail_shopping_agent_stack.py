@@ -25,7 +25,7 @@ class RetailShoppingAgentStack(Stack):
 
         self.random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
 
-        # Define source and destination paths
+        # Copy products.json file to KB folder for upload to S3
         source_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'products.json')
         dest_file = os.path.join(os.path.dirname(__file__), '..', 'bedrock_agent', 'knowledge_bases', 'products.json')
         shutil.copy2(source_file, dest_file)
@@ -82,7 +82,9 @@ class RetailShoppingAgentStack(Stack):
 
         upload_product_catalog_kb_cr = self.upload_product_catalog_and_sync_kb(data_source_bucket, product_catalog_kb_stack.knowledge_base_id, product_catalog_kb_stack.data_source_id, config)
 
+        # Add stack dependencies
         s3_upload_kb_files.node.add_dependency(data_source_bucket)
+
         upload_product_catalog_kb_cr.node.add_dependency(s3_upload_kb_files)
         upload_product_catalog_kb_cr.node.add_dependency(product_catalog_kb_stack)
 
@@ -96,7 +98,7 @@ class RetailShoppingAgentStack(Stack):
         # Create Lambda function to process product catalog
         lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_catalog_and_sync_kb")
         # Create a unique name for the lambda role
-        lambda_role_name = f"{config.app_name}-{self.random_hash}-upload-product-catalog-role"
+        lambda_role_name = f"{self.random_hash}-upload-product-catalog-role"
 
         # Create the IAM role for the Lambda function
         lambda_role = iam.Role(
@@ -117,10 +119,10 @@ class RetailShoppingAgentStack(Stack):
         )
 
         process_product_catalog_lambda = lambda_.Function(
-            self, "UploadAndSyncProductCatalogToKBLambda",
+            self, "UploadAndSyncProductCatalogToKB",
             function_name=f"{config.app_name}-upload-product-catalog-and-sync-kb",
             role = lambda_role,
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=lambda_.Code.from_asset(lambda_code_path),
             environment={

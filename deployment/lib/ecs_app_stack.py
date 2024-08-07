@@ -35,9 +35,6 @@ class EcsAppStack(NestedStack):
 
         random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
 
-        # Read Shopping agent Id from SSM Parameter Store
-        shopping_agent_id = ssm.StringParameter.value_from_lookup(self, config.shopping_agent_id_param)
-
         # Create VPC
         vpc = ec2.Vpc(self, f"{app_name}-vpc", max_azs=2)
         # Create ECS Cluster
@@ -191,56 +188,64 @@ class EcsAppStack(NestedStack):
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "UserPoolId",
                         parameter_name= config.cognito_user_pool_id_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
                 "USER_POOL_DOMAIN": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "UserPoolDomain",
                         parameter_name= config.cognito_user_pool_domain_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
                 "USER_POOL_CLIENT_ID": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "ClientId",
                         parameter_name= config.cognito_client_id_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
                 "USER_POOL_CLIENT_SECRET": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "ClientSecret",
                         parameter_name= config.cognito_client_secret_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
                 "CLOUDFRONT_URL": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "CloudfrontUrl",
                         parameter_name= config.cloudfront_url_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
                 "API_URL": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "API_URL",
                         parameter_name= config.apigateway_url_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
                 "SHOPPING_AGENT_ID": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "ShoppingAgentId",
                         parameter_name= config.shopping_agent_id_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
                 "SHOPPING_AGENT_ALIAS_ID": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "ShoppingAgentAliasId",
                         parameter_name= config.shopping_agent_alias_id_param,
-                        version=1
+                        version=1,
+                        simple_name=False
                     )
                 ),
             }
@@ -254,7 +259,7 @@ class EcsAppStack(NestedStack):
             f"{app_name}-service",
             cluster=cluster,
             task_definition=task_definition,
-            desired_count=config.number_of_tasks,
+            desired_count=config.number_of_ecs_tasks,
             public_load_balancer=True,
             assign_public_ip=True, # Set this to False if deploying in private subnet
             listener_port=443 if certificate else 80,
@@ -301,10 +306,7 @@ class EcsAppStack(NestedStack):
                     user_pool_domain=user_pool_domain
                 )
             )
-
-            update_cognito_oauth_cr = self.update_cognito_oauth_settings(self.app_url, user_pool.user_pool_id, user_pool_client.user_pool_client_id)   
-            update_cognito_oauth_cr.node.add_dependency(fargate_service) 
-
+           
         # Store Web app URL in Parameter Store as a simple string
         ssm.StringParameter(
             self,
@@ -314,42 +316,10 @@ class EcsAppStack(NestedStack):
             description="URL of the Web App"
         )
 
-        # Update the container definition to include the APP_URL
-        task_definition.default_container.add_environment("APP_URL", self.app_url)
+        if self.domain_name:
+            # Update the container definition to include the REDIRECT_URI if hosted using custom_domain for Authentication
+            task_definition.default_container.add_environment("REDIRECT_URI", self.app_url)
 
         CfnOutput(self, f"{app_name}Url", value=self.app_url)
 
-    def update_cognito_oauth_settings(self, app_url, user_pool_id, client_id):
-        update_oauth_cr = cr.AwsCustomResource(
-            self, "UpdateCognitoOAuthSettings",
-            on_create=cr.AwsSdkCall(
-                service="CognitoIdentityServiceProvider",
-                action="updateUserPoolClient",
-                parameters={
-                    "UserPoolId": user_pool_id,
-                    "ClientId": client_id,
-                    "AllowedOAuthFlows": ["code"],
-                    "AllowedOAuthFlowsUserPoolClient": True,
-                    "AllowedOAuthScopes": ["openid", "email", "profile"],
-                    "CallbackURLs": [
-                        f"{app_url}/oauth2/idpresponse",
-                        app_url,
-                        "http://localhost:8501"
-                    ],
-                    "LogoutURLs": [
-                        app_url,
-                        "http://localhost:8501"
-                    ],
-                    "SupportedIdentityProviders": ["COGNITO"]
-                },
-                physical_resource_id=cr.PhysicalResourceId.of(f"{user_pool_id}-{client_id}-oauth-settings")
-            ),
-            policy=cr.AwsCustomResourcePolicy.from_statements([
-                iam.PolicyStatement(
-                    actions=["cognito-idp:UpdateUserPoolClient"],
-                    resources=[f"arn:aws:cognito-idp:{self.region}:{self.account}:userpool/{user_pool_id}"]
-                )
-            ])
-        )
 
-        return update_oauth_cr
