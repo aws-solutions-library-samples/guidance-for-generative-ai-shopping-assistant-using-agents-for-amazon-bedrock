@@ -190,6 +190,10 @@ class BedrockShoppingAgentStack(NestedStack):
             source_arn=f"arn:aws:bedrock:{self.region}:{self.account}:agent/{agent.attr_agent_id}"
         )
 
+        self.agent_name = agent.agent_name
+        self.agent_id = agent.attr_agent_id
+        self.agent_alias_id = alias.attr_agent_alias_id
+
         # Store agent ID and alias ID in SSM Parameter Store
         ssm.StringParameter(
             self, "ShoppingAgentIdParameter",

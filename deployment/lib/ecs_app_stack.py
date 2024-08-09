@@ -320,6 +320,7 @@ class EcsAppStack(NestedStack):
             # Update the container definition to include the REDIRECT_URI if hosted using custom_domain for Authentication
             task_definition.default_container.add_environment("REDIRECT_URI", self.app_url)
 
-        CfnOutput(self, f"{app_name}Url", value=self.app_url)
+        # Output the App URL from ECS Stack
+        CfnOutput(self, "AppUrl", value=self.app_url, description="The URL of the deployed application")
 
 

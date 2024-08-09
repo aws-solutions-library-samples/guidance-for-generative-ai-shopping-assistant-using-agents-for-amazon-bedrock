@@ -1,5 +1,8 @@
 import hashlib
-from aws_cdk import Stack
+from aws_cdk import (
+    Stack,
+    CfnOutput
+)
 from constructs import Construct
 from lib.cognito_stack import CognitoStack
 from lib.ecs_app_stack import EcsAppStack
@@ -38,3 +41,12 @@ class RetailAppAIAssistantStack(Stack):
             application_dns_name=self.application_dns_name,
             alb_dns_name = self.alb_dns_name 
         )
+
+        # Output the App URL from ECS Stack
+        CfnOutput(self, "AppUrl", value=ecs_stack.app_url, description="The URL of the deployed application")
+
+        # Output Cognito Parameters
+        CfnOutput(self, "UserPoolId", value=cognito_stack.user_pool.user_pool_id)
+        CfnOutput(self, "UserPoolClientId", value=cognito_stack.user_pool_client.user_pool_client_id)
+        CfnOutput(self, "UserPoolDomain", value=cognito_stack.user_pool_domain.base_url())
+        CfnOutput(self, "CognitoClientSecretParam", value=cognito_stack.client_secret_param.parameter_arn)

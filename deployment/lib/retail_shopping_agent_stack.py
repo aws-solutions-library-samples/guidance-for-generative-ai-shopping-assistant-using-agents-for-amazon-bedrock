@@ -16,6 +16,7 @@ from aws_cdk import (
     aws_ssm as ssm,
     RemovalPolicy,
     Duration,
+    CfnOutput
 )
 from lib.config import Config
 
@@ -92,6 +93,12 @@ class RetailShoppingAgentStack(Stack):
         product_catalog_kb_stack.node.add_dependency(data_source_bucket)
         
         shopping_agent_stack.node.add_dependency(product_catalog_kb_stack)
+
+        CfnOutput(self, "ProductCatalog-KnowledgeBaseId", value=product_catalog_kb_stack.knowledge_base_id)
+        CfnOutput(self, "ProductCatalog-KnowledgeBaseName", value=product_catalog_kb_stack.knowledge_base_name)
+        CfnOutput(self, "ShoppingAgentName", value=shopping_agent_stack.agent_name)
+        CfnOutput(self, "ShoppingAgentId", value=shopping_agent_stack.agent_id)
+        CfnOutput(self, "ShoppingAgentAliasId", value=shopping_agent_stack.agent_alias_id)
    
     def upload_product_catalog_and_sync_kb(self, data_source_bucket, knowledge_base_id, data_source_id, config):
 

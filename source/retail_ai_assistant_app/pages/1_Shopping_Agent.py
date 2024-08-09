@@ -64,6 +64,10 @@ def initialize_session_state():
                     st.session_state.config.SHOPPING_AGENT_ALIAS_ID,
                     st.session_state.agent_session_state, end_session=True)
         
+    st.session_state.total_input_tokens=0
+    st.session_state.total_output_tokens=0
+    st.session_state.total_invoke_agent=0
+        
     if 'config' not in st.session_state:
         st.session_state.config = Config()
     if 'logger' not in st.session_state:
@@ -72,6 +76,12 @@ def initialize_session_state():
         st.session_state.bedrock_agent = BedrockAgent(st.session_state.config.SESSION, st.session_state.logger)
     if 'product_service' not in st.session_state:
         st.session_state.product_service = ProductService(st.session_state.config.API_URL, st.session_state.logger)
+    if 'total_input_tokens' not in st.session_state:
+        st.session_state.total_input_tokens =0
+    if 'total_output_tokens' not in st.session_state:
+        st.session_state.total_output_tokens =0
+    if 'total_invoke_agent' not in st.session_state:
+        st.session_state.total_invoke_agent =0
 
     st.session_state.session_id = str(uuid.uuid4())
     st.session_state.messages = []
@@ -122,6 +132,7 @@ def load_random_user_profiles():
 
 def GetAnswers(query, session_id, assistant, agent_id, agent_alias_id, agent_session_state, end_session: bool = False):
 
+    st.session_state.total_invoke_agent += 1
     answer = assistant.invoke_agent(agent_id, agent_alias_id, session_id, agent_session_state, query, end_session)
     st.session_state.answer = answer
 
@@ -145,26 +156,22 @@ def reformat_product_output(response):
     products = None
     related_products = None
     compare_products=None
-    
+
     if products_match:
-        products_json = products_match.group(1)
-        try:
-            products = json.loads(products_json)
-        except json.JSONDecodeError:
-            print("Error parsing product data")
+        products_csv = products_match.group(1)
+        if products_csv:
+            products = products_csv.strip()
     
     if related_products_match:
-        related_products_json = related_products_match.group(1)
-        print(related_products_json)
-        try:
-            related_products = json.loads(related_products_json)
-        except json.JSONDecodeError:
-            print("Error parsing related product data")
+        related_products__csv = related_products_match.group(1)
+        if related_products__csv:
+            related_products = related_products__csv.strip()
     
     if compare_match:
         csv_content = compare_match.group(1)
         if csv_content:
             compare_products = csv_content.strip()
+            
 
     # Remove both <products> and <relatedProducts> tags and their contents from the response
     response = re.sub(r'(?s)<products>(.*?)</products>', '', response, flags=re.DOTALL)
@@ -173,81 +180,42 @@ def reformat_product_output(response):
 
     return response.strip(), products, related_products, compare_products
 
-def display_product_list(products):
+
+def display_product_list_from_csv(products):
     products_history= f""" """
-    for i, product in enumerate(products, 1):
-        products_history += f"""
-        | <img src="{product["image_url"]}" width="100" alt="{product["product_name"]}"> | {i}. **{product["product_name"]}** | Price: ${product["price"]} |
-        """
 
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.image(product['image_url'], width=150)
-        with col2:
-            st.write(f"{i}. {product['product_name']}")
-            st.write(f"${product['price']}")
-            st.button(f"View Details", key=f"show_{product['product_id']}", on_click=show_product, args=(product,))
+    df = pd.read_csv(io.StringIO(products))
 
+    if not df.empty:
+        i= 1
+        for _, row in df.iterrows():
+            product_id = row['Product Id']
+            try:
+                product = st.session_state.product_service.get_product_details(product_id)
+                if product:
+                    products_history += f"""
+                | <img src="{product["image"]}" width="100" alt="{product["name"]}"> | {i}. **{product["name"]}** | Price: ${product["price"]} |
+                """
+
+                    col1, col2 = st.columns([1, 2])
+                    with col1:
+                        st.image(product['image'], width=150)
+                    with col2:
+                        st.write(f"{i}. {product['name']}")
+                        st.write(f"${product['price']}")
+                        st.button(f"View Details", key=f"show_{product['id']}", on_click=show_product, args=(product,))
+                    
+                    i+=1
+            except Exception as e:
+                print(f"An unexpected error occurred: {str(e)}")
+    
     return products_history
 
 def display_compare(text):
-   
-    # # Parse CSV content
-    # csv_reader = csv.DictReader(io.StringIO(text))
-    # rows = list(csv_reader)
-    
-    # if not rows:
-    #     return "No data found in the CSV."
-    # # Get all column names
-    # all_columns = list(rows[0].keys())
-    
-    # # Fixed columns
-    # fixed_columns = ['Product ID', 'Product Name', 'Image', 'Price']
-    
-    # # Dynamic columns (excluding fixed columns)
-    # dynamic_columns = [col for col in all_columns if col not in fixed_columns]
-    # # Start building the markdown table
-    # markdown_table = "| View Details | Product Name | Image | Price | " + " | ".join(dynamic_columns) + " |\n"
-    # markdown_table += "|-------------|--------------|-------|-------|" + "-|" * len(dynamic_columns) + "\n"
-    # # Add each row to the markdown table
-    # for row in rows:
-    #     product = {
-    #         'product_id': row['Product ID'],
-    #         'product_name': row['Product Name']
-    #     }
-        
-    #     view_details_button = st.button(f"View Details", key=f"view_{product['product_id']}", on_click=show_product, args=(product,))
-        
-    #     # Transform the image URL to an HTML img tag
-    #     img_tag = f"<img src='{row['Image']}' width='100'>"
-        
-    #     # Start the row with fixed columns
-    #     row_content = f"| View {view_details_button} | {row['Product Name']} | {img_tag} | {row['Price']} |"
-        
-    #     # Add dynamic columns
-    #     for col in dynamic_columns:
-    #         row_content += f" {row[col]} |"
-        
-    #     # Add the row to the markdown table
-    #     markdown_table += row_content + "\n"
-
-    # st.markdown(markdown_table, unsafe_allow_html=True)
-    # st.session_state.messages.append({"role": "assistant", "content": markdown_table})
 
     df = pd.read_csv(io.StringIO(text))
 
     if not df.empty:
-        # Define custom column renderers
-        def render_button(row):
-            product = {
-            'product_id': row['View Details'],
-            'product_name': row['Product Name']
-            }
-            return st.button(f"View Details", key=f"view_{product['product_id']}", on_click=show_product, args=(product,))
-        
-        def render_image(url):
-                return f'<img src="{url}" width="100">'
-        
         def create_markdown_table(df):
             # Create the header
             markdown = "| " + " | ".join(df.columns) + " |\n"
@@ -294,7 +262,7 @@ def display_compare(text):
         use_container_width=True,
         )
 
-        display_product_list(product_list)
+        display_product_list_from_csv(product_list)
         
         st.session_state.messages.append({"role": "assistant", "content": create_markdown_table(df)})
                           
@@ -304,7 +272,7 @@ def display_compare(text):
 def show_product(product):
     print('test button click with product', product)
     st.session_state.selected_product = product
-    user_query = f'View details for **{product['product_name']}**'
+    user_query = f'View details for **{product['name']}**'
     st.session_state.messages.append({"role": "user", "content": user_query})
 
 def buy_product(product,quantity):
@@ -441,7 +409,7 @@ def load_demo():
         # with st.chat_message(message["role"]):
         chat_container.chat_message(message["role"]).markdown(message["content"], unsafe_allow_html=True)
     
-    user_query = st.chat_input(placeholder="Ask me anything!")
+    user_query = st.chat_input(placeholder="Ask me anything!", max_chars=750)
     if user_query:
         st.session_state.selected_product = None
         st.session_state.buy_product = None
@@ -467,7 +435,7 @@ def load_demo():
                     st.markdown("---")
                     # Display the products as a list
                     st.write("Suggested Products:")
-                    products_history= display_product_list(products)
+                    products_history= display_product_list_from_csv(products)
                     st.session_state.messages.append({"role": "assistant", "content": products_history})
                 
                 if related_products:
@@ -475,7 +443,7 @@ def load_demo():
                     st.markdown("---")
                     # Display the products as a list
                     st.write("Products you might like:")
-                    related_products_history= display_product_list(related_products)
+                    related_products_history= display_product_list_from_csv(related_products)
                     st.session_state.messages.append({"role": "assistant", "content": related_products_history})
                     
                 if compare_products:
@@ -486,14 +454,10 @@ def load_demo():
     # Display selected product details
     if st.session_state.selected_product:
         print('selected product')
-        product_id = st.session_state.selected_product['product_id']
+        product= st.session_state.selected_product
         with chat_container.chat_message("assistant"):  
             with st.spinner('...'):
-                st.session_state.selected_product = None
-                product = st.session_state.product_service.get_product_details(product_id)
-
-                print(product)
-
+                # print(product)
                 if product: 
                     col1, col2 = st.columns([1.5, 1])
                     with col1:
@@ -612,7 +576,7 @@ def load_demo():
                         st.markdown("---")
                         # Display the products as a list
                         st.write("Suggested Products:")
-                        products_history= display_product_list(products)
+                        products_history= display_product_list_from_csv(products)
                         st.session_state.messages.append({"role": "assistant", "content": products_history})
                         
                     
@@ -621,7 +585,7 @@ def load_demo():
                         st.markdown("---")
                         # Display the products as a list
                         st.write("Products you might like:")
-                        related_products_history= display_product_list(related_products)
+                        related_products_history= display_product_list_from_csv(related_products)
                         st.session_state.messages.append({"role": "assistant", "content": related_products_history})
         
                     st.session_state.trace = response["trace"]
@@ -647,6 +611,7 @@ def load_trace():
         if trace_type in st.session_state.trace:
             trace_steps = {}
             for trace in st.session_state.trace[trace_type]:
+                # print(trace)
                 # Each trace type and step may have different information for the end-to-end flow
                 for trace_info_type in trace_info_types:
                     if trace_info_type in trace:
@@ -664,6 +629,12 @@ def load_trace():
                         trace_str = json.dumps(trace, indent=2)
                         st.code(trace_str, language="json", line_numbers=trace_str.count("\n"))
                         # st.json(trace_str)
+
+                        # Sum input and output tokens
+                        if 'modelInvocationOutput' in trace:
+                            usage = trace['modelInvocationOutput'].get('metadata', {}).get('usage', {})
+                            st.session_state.total_input_tokens += usage.get('inputTokens', 0)
+                            st.session_state.total_output_tokens += usage.get('outputTokens', 0)
                         
                         if 'invocationInput' in trace and 'actionGroupInvocationInput' in trace['invocationInput']:
                             email, email_body = extract_email_and_body(trace)
@@ -674,6 +645,28 @@ def load_trace():
         else:
             st.text("None")
 
+def load_cost():
+    input_token_cost = st.session_state.total_input_tokens * (st.session_state.config.MODEL_INPUT_TOKEN_PRICE/1000)
+    output_token_cost = st.session_state.total_output_tokens * (st.session_state.config.MODEL_OUTPUT_TOKEN_PRICE/1000)
+
+    total_cost = input_token_cost + output_token_cost
+
+    st.markdown('### Model Cost for current Session')
+    st.markdown (f"Total Agent Invoke Count: **{st.session_state.total_invoke_agent}**")
+
+    st.markdown("""
+        | Token Type      | Total Tokens | Cost [USD] |
+        |-----------------|--------------|------------|
+        | Input Tokens    | {total_input_tokens} | ${input_token_cost:.5f} |
+        | Output Tokens   | {total_output_tokens} | ${output_token_cost:.5f} |
+        | **Total Cost**  |              | **${total_cost:.5f}** |
+        """.format(
+            total_input_tokens=st.session_state.total_input_tokens,
+            input_token_cost=input_token_cost,
+            total_output_tokens=st.session_state.total_output_tokens,
+            output_token_cost=output_token_cost,
+            total_cost=total_cost
+        ))
 
 def load_session():
     st.write(f"Session ID: {st.session_state.session_id}")
@@ -739,13 +732,15 @@ def main():
         agent_title = "👩‍💼AnyCompanyCommerce Support Agent"
         st.session_state.welcome_message = st.session_state.welcome_suppport_message
 
-    chat_demo, session, trace,  = st.tabs(["Assistant", "Agent Session State", "Trace"])
+    chat_demo, session, trace, cost  = st.tabs(["Assistant", "Agent Session State", "Trace", 'Model Cost'])
     with session:
         load_session()
     with chat_demo:
         load_demo()
     with trace:
         load_trace()
+    with cost:
+        load_cost()
 
     if st.session_state.email_confirmation:
         st.write(st.session_state.email_confirmation)

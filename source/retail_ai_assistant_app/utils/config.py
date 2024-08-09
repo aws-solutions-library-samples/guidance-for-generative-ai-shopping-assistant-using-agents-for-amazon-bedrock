@@ -16,6 +16,8 @@ class Config:
         self.SHOPPING_AGENT_ID = os.environ.get("SHOPPING_AGENT_ID")
         self.API_URL = os.environ.get("API_URL")
         self.AWS_ACCOUNT_ID, self.AWS_REGION, self.SESSION = self.get_aws_env_values()
+        self.MODEL_INPUT_TOKEN_PRICE = 0.003 # Price per 1000 tokens
+        self.MODEL_OUTPUT_TOKEN_PRICE = 0.015 # Price per 1000 tokens
 
     
     def get_aws_env_values(self):

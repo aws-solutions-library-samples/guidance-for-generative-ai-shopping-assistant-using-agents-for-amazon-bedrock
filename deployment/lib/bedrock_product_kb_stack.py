@@ -102,6 +102,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         )
 
         self.knowledge_base_id = product_catalog_knowledge_base.attr_knowledge_base_id
+        self.knowledge_base_name = product_catalog_knowledge_base.name
 
         # Create S3 DataSource for Product Knowledge Base
         product_catalog_data_source=bedrock.CfnDataSource(
@@ -135,6 +136,9 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
             string_value=self.knowledge_base_id
         )
 
+        # Output the Knowledgebase URL
+        self.knowledge_base_url = f"https://console.aws.amazon.com/bedrock/home?region={self.region}#/knowledge-bases/{self.knowledge_base_id}"
+       
         # Output the KB details
         CfnOutput(self, f"{product_catalog_knowledge_base.name}-id", value=self.knowledge_base_id)
 
