@@ -148,7 +148,6 @@ def extract_email_and_body(trace):
     return None, None
 
 def reformat_product_output(response):
-    print('format')
     products_match = re.search(r'(?s)<products>(.*?)</products>', response, re.DOTALL)
     related_products_match = re.search(r'(?s)<relatedProducts>(.*?)</relatedProducts>', response, re.DOTALL)
     compare_match = re.search(r'(?s)<compare>(.*?)</compare>', response, re.DOTALL)
@@ -179,9 +178,33 @@ def reformat_product_output(response):
     response = re.sub(r'(?s)<compare>(.*?)</compare>', '', response, flags=re.DOTALL)
 
     return response.strip(), products, related_products, compare_products
+    
+def display_product_list(products):
+    products_history= f""" """
+    for i, product in enumerate(products, 1):
+        try:
+            product = st.session_state.product_service.get_product_details(product['product_id'])
+            if product:
+                products_history += f"""
+            | <img src="{product["image"]}" width="100" alt="{product["name"]}"> | {i}. **{product["name"]}** | Price: ${product["price"]} |
+            """
 
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    st.image(product['image'], width=150)
+                with col2:
+                    st.write(f"{i}. {product['name']}")
+                    st.write(f"${product['price']}")
+                    st.button(f"View Details", key=f"show_{product['id']}", on_click=show_product, args=(product,))
+        except Exception as e:
+            print(f"An unexpected error occurred: {str(e)}")
+        
+    return products_history
 
 def display_product_list_from_csv(products):
+    if not products:
+        return ''
+    
     products_history= f""" """
 
     df = pd.read_csv(io.StringIO(products))
@@ -189,7 +212,7 @@ def display_product_list_from_csv(products):
     if not df.empty:
         i= 1
         for _, row in df.iterrows():
-            product_id = row['Product Id']
+            product_id = row['productId']
             try:
                 product = st.session_state.product_service.get_product_details(product_id)
                 if product:
@@ -243,10 +266,6 @@ def display_compare(text):
             "promoted": False
             }
             product_list.append(product)
-        
-        # # Apply custom renderers
-        # df['View Details'] =  df['Product ID']
-        #df['Image'] = df['Image'].apply(render_image)
 
         # Reorder columns
         column_order = ['Product Name', 'Image', 'Price'] + [col for col in df.columns if col not in [ 'Product ID', 'Product Name', 'Image', 'Price']]
@@ -262,7 +281,7 @@ def display_compare(text):
         use_container_width=True,
         )
 
-        display_product_list_from_csv(product_list)
+        display_product_list(product_list)
         
         st.session_state.messages.append({"role": "assistant", "content": create_markdown_table(df)})
                           
