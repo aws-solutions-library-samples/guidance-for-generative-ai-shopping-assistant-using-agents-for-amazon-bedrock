@@ -1,15 +1,16 @@
 import streamlit as st
 import re, io, json, os
 import pandas as pd
+import shutil
 import uuid
 from utils.logger import get_logger
 from utils.authenticate import authenticate_user
 from utils.studio_style import apply_studio_style, get_background
 from utils.studio_style import keyword_label
+from utils.helper import resize_image, encode_image
 from utils.config import Config
 from utils.bedrock import BedrockAgent
 from utils.product_service import ProductService
-import pytz
 from datetime import datetime
 
 
@@ -18,6 +19,16 @@ st.set_page_config(
     page_icon="🛍️",
     layout='wide'
 )
+
+def reset_chat_directory():
+    chat_dir = st.session_state.chat_directory
+    
+    # If the directory exists, delete it
+    if os.path.exists(chat_dir):
+        shutil.rmtree(chat_dir)
+    
+    # Create a new chat directory
+    os.makedirs(chat_dir)
 
 def load_agent_session_state():
     # Send current time for time awareness to LLM
@@ -55,13 +66,13 @@ def load_agent_session_state():
 
 def initialize_session_state():
     st.session_state.welcome_message = "Hello! Welcome to AnyCompanyCommerce. I'm your AI shopping assistant here to help you find products that match your needs and interests. How can I assist you today?"
-
+    st.session_state.chat_directory = os.path.join("temp", "chat")
     if 'messages' in st.session_state and st.session_state.messages and  len(st.session_state.messages) > 1:
         GetAnswers(' ', st.session_state.session_id, 
                     st.session_state.bedrock_agent, 
                     st.session_state.config.SHOPPING_AGENT_ID, 
                     st.session_state.config.SHOPPING_AGENT_ALIAS_ID,
-                    st.session_state.agent_session_state, end_session=True)
+                    st.session_state.agent_session_state, None, end_session=True)
         
     st.session_state.total_input_tokens=0
     st.session_state.total_output_tokens=0
@@ -84,6 +95,7 @@ def initialize_session_state():
 
     st.session_state.session_id = str(uuid.uuid4())
     st.session_state.messages = []
+    st.session_state.chat_image = None
     st.session_state.trace = {}
     st.session_state.email_confirmation=''
     st.session_state.messages.append({"role": "assistant", "content": st.session_state.welcome_message})
@@ -96,6 +108,7 @@ def initialize_session_state():
     st.session_state.cart = []
 
     load_agent_session_state()
+    reset_chat_directory()
 
 @st.cache_data
 def load_random_user_profiles():
@@ -114,10 +127,10 @@ def load_random_user_profiles():
         print(f"An unexpected error occurred: {str(e)}")
         return None
 
-def GetAnswers(query, session_id, assistant, agent_id, agent_alias_id, agent_session_state, end_session: bool = False):
+def GetAnswers(query, session_id, assistant, agent_id, agent_alias_id, agent_session_state, base64_image= None, end_session: bool = False):
 
     st.session_state.total_invoke_agent += 1
-    answer = assistant.invoke_agent(agent_id, agent_alias_id, session_id, agent_session_state, query, end_session)
+    answer = assistant.invoke_agent(agent_id, agent_alias_id, session_id, agent_session_state, query, base64_image, end_session)
     st.session_state.answer = answer
 
     return answer
@@ -266,43 +279,49 @@ def display_compare(text):
     return df   
 
 
-def add_prompt(prompt):
+def add_prompt(prompt, file_path: None ):
     if prompt:
         st.session_state.user_action = 'ADD_PROMPT'
         st.session_state.user_prompt = prompt
+        st.session_state.chat_image = file_path
 
 def load_sample_prompts():
     st.write('Click to try Sample Prompts:')
-    col1, col2, col3, col4, col5, col6 = st.columns([1,2,1,1,1,1])
+    col1, col2, col3, col4, col5, col6, col7 = st.columns([1,2,1,1,1,1,1])
     with col1:
         text = 'Good quality tents for camping trip'
-        st.button(text, key="prompt_1", on_click=add_prompt, args=(text,))
+        st.button(text, key="prompt_1", on_click=add_prompt, args=(text,None,))
     with col2:
         text = 'What kind of outfit should I wear on my first day at New York Times?'
-        st.button(text, key="prompt_2", on_click=add_prompt, args=(text,))
+        st.button(text, key="prompt_2", on_click=add_prompt, args=(text,None,))
     with col3:
         text = 'Picnic snacks for 4 persons'
-        st.button(text, key="prompt_3", on_click=add_prompt, args=(text,))
+        st.button(text, key="prompt_3", on_click=add_prompt, args=(text,None,))
     with col4:
         # Read recipe
         recipe = ''  
-        data_path = os.path.join(os.path.dirname(__file__), "..", "assets", "data")
-        with open(f"{data_path}/recipe.txt", encoding='utf-8') as f:
+        data_path = os.path.join(os.path.dirname(__file__), "..", "assets", "data", "recipe.txt")
+        with open(f"{data_path}", encoding='utf-8') as f:
             recipe = f.read()
-        text = 'Cook vegeterian lasagne'
+        text = 'Cook Mediterranean Salad'
         if recipe:
             prompt = f"""Help me find any products available to buy for below recipe:\n\n
             
             {recipe}"""
         else:
             prompt= text
-        st.button(text, key="prompt_4", on_click=add_prompt, args=(prompt,))
+        st.button(text, key="prompt_4", on_click=add_prompt, args=(prompt,None,))
     with col5:
-        text = 'Moving to new apartment'
-        st.button(text, key="prompt_5", on_click=add_prompt, args=(text,))
+        # Set grocery list image
+        file_path = os.path.join(os.path.dirname(__file__), "..", "assets", "data", "grocery_list.jpeg")
+        text = 'Buy grocery items'
+        st.button(text, key="prompt_5", on_click=add_prompt, args=(text,file_path,))
     with col6:
+        text = 'Moving to new apartment'
+        st.button(text, key="prompt_6", on_click=add_prompt, args=(text,None,))
+    with col7:
         text = 'Gift for wedding anniversary'
-        st.button(text, key="prompt_6", on_click=add_prompt, args=(text,))
+        st.button(text, key="prompt_7", on_click=add_prompt, args=(text,None,))
     
 
 def show_product(product):
@@ -431,8 +450,18 @@ def create_shipping_form():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.form_submit_button("Submit", on_click=submit_callback, use_container_width=True)
-    
 
+def upload_image():
+    if 'chat_file' in st.session_state:
+        uploaded_file = st.session_state.chat_file
+        file_name = uploaded_file.name
+        file_path = os.path.join(st.session_state.chat_directory, file_name)
+        # Save the file
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.session_state.chat_image = file_path
+
+    
 def load_demo():
 
     chat_container = st.container(height=600)
@@ -446,25 +475,35 @@ def load_demo():
     
     user_query = st.chat_input(placeholder="Ask me anything!", max_chars=750)
 
+    st.sidebar.file_uploader("Upload Image to Chat", type=["jpg", "jpeg", "png"], key="chat_file", on_change = upload_image)
+
+    encoded_image = None
+    if st.session_state.chat_image:
+        encoded_image = encode_image(st.session_state.chat_image)
+        # Add image to messages as HTML tag
+        img_html = f'<img src="data:image/jpeg;base64,{encoded_image}" alt="Uploaded Image" style="max-width: 300px; max-height: 300px;"/>'
+        st.session_state.messages.append({"role": "user", "content": img_html})
+        chat_container.chat_message("user").markdown(img_html, unsafe_allow_html=True)
+        st.session_state.chat_image = None
+
     # Add Sample prompt
     if st.session_state.user_prompt:
         user_query = st.session_state.user_prompt
         st.session_state.user_prompt = None
-
+    
     if user_query:
         st.session_state.selected_product = None
         st.session_state.buy_product = None
-        st.session_state.messages.append({"role": "user", "content": user_query})
 
+        st.session_state.messages.append({"role": "user", "content": user_query})
         chat_container.chat_message("user").write(user_query)
-        
+            
         with chat_container.chat_message("assistant"):
             # Add a spinner to show loading state
             with st.spinner('...'):
                 response = GetAnswers(user_query, st.session_state.session_id, st.session_state.bedrock_agent, 
                                        st.session_state.config.SHOPPING_AGENT_ID, st.session_state.config.SHOPPING_AGENT_ALIAS_ID,
-                                       st.session_state.agent_session_state)
-                # print(response["output_text"])
+                                       st.session_state.agent_session_state, encoded_image)
 
                 formatted_response, products, related_products, compare_products = reformat_product_output_list(response["output_text"])
                 st.markdown(formatted_response, unsafe_allow_html=True)
@@ -600,7 +639,7 @@ def load_demo():
                     st.session_state.buy_product = None
                     response = GetAnswers(f"{query}", st.session_state.session_id, st.session_state.bedrock_agent, 
                                        st.session_state.config.SHOPPING_AGENT_ID, st.session_state.config.SHOPPING_AGENT_ALIAS_ID,
-                                       st.session_state.agent_session_state)
+                                       st.session_state.agent_session_state,None)
                     
                     # print(response["output_text"])
 
@@ -749,6 +788,7 @@ def main():
         if st.button("Clear message history"):
             st.session_state.selected_user_profile = None
             st.session_state.user_dropdown = ""
+            st.session_state.chat_image = None
             initialize_session_state()
     
     # Initialize the messages and assistant object using session state
@@ -771,6 +811,7 @@ def main():
     if st.session_state.email_confirmation:
         st.write(st.session_state.email_confirmation)
     
+
 
 
 if __name__ == '__main__':

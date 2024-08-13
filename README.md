@@ -252,6 +252,8 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 
    - Try changing the User Persona with "gender:M" by naviagting back to `Agent Session State` tab and search again to see the updated results.
 
+   **NOTE**: *The products in  search result may differ with each query due to default number of documents returned by Knowledge Base. See [Next Steps](#next-steps) section for more details.*
+
 7. **View Agent Execution Steps**
 - For each query sent to the agent, navigate to the `Trace` tab to view a detailed trace of agent execution, also known as Chain of Thought (CoT).
 - These traces give you visibility into the agent’s reasoning on why and how it performs the tasks step by step. 
@@ -268,11 +270,11 @@ Here are some next steps to consider for improving robustness and accuracy of th
 
 - The agent's instructions and prompt templates are optimized for Anthropic Claude Sonnet 3 model. You can use the same agent model to generate new or updated instrcuctions.
 
-- Implement robust validation mechanisms before presenting the actual response to the customer. For example, validate the product list in the LLM response against the catalog to ensure accuracy.
+- Implement robust validation mechanisms for LLM response before presenting to the customer. 
 
 - Implement guided user experience on frontend to avoid free-form user input mistakes and harmful or toxic content, as well as control number of input tokens for efficiency.
 
-- Amazon Bedrock returns up to five results from knowledge base search by default. Modify the [query configurations](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-config.html) of a knowledge base attached to your agent by using the sessionState to increase number of products returned in search results.
+- Knowledge Bases for Amazon Bedrock returns up to five documents by default. Modify the [query configurations](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-config.html) of knowledge base for agent using the sessionState to increase number of products returned in search results. Alternatively, you can  embed all products using single document in S3 with optimal [chunking & parsing](https://community.aws/content/2jU5zpqh4cal0Lm47MBdRmKLLJ5/a-developer-s-guide-to-advanced-chunking-and-parsing-with-amazon-bedrock?lang=en) configuration. 
 
 - Continuosly monitor model performance and accuracy using [Model Evaluation for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation.html).
 
