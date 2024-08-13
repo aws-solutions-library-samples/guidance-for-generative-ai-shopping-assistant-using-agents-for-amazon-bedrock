@@ -101,12 +101,6 @@ class BedrockShoppingAgentStack(NestedStack):
             resources=[f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/{product_kb_id}"]
         ))
 
-        # agent_role.add_to_policy(iam.PolicyStatement(
-        #     effect=iam.Effect.ALLOW,
-        #     actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-        #     resources=[f"arn:aws:logs:{self.region}:{self.account}:log-group:/aws/bedrock/agents/*"]
-        # ))
-
         # Create Bedrock Agent
         agent = bedrock.CfnAgent(
             self, "ShoppingAgent",
