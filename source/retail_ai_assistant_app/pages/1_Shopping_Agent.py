@@ -55,7 +55,6 @@ def load_agent_session_state():
 
 def initialize_session_state():
     st.session_state.welcome_message = "Hello! Welcome to AnyCompanyCommerce. I'm your AI shopping assistant here to help you find products that match your needs and interests. How can I assist you today?"
-    st.session_state.welcome_suppport_message = "Hello! Welcome to AnyCompanyCommerce. How can I assist you today with any questions or concerns regarding our policies or services?"
 
     if 'messages' in st.session_state and st.session_state.messages and  len(st.session_state.messages) > 1:
         GetAnswers(' ', st.session_state.session_id, 
@@ -87,10 +86,9 @@ def initialize_session_state():
     st.session_state.messages = []
     st.session_state.trace = {}
     st.session_state.email_confirmation=''
-    if 'agent_option' in st.session_state and st.session_state.agent_option['label'] == "Support Agent":
-        st.session_state.welcome_message=st.session_state.welcome_suppport_message
     st.session_state.messages.append({"role": "assistant", "content": st.session_state.welcome_message})
     st.session_state.selected_product = None
+    st.session_state.user_prompt = None
     st.session_state.buy_product = None
     st.session_state.user_action = None
     st.session_state.shipping_details_provided = None
@@ -98,20 +96,6 @@ def initialize_session_state():
     st.session_state.cart = []
 
     load_agent_session_state()
-
-    # # Get the current time in the user's timezone
-    # user_timezone = pytz.timezone("Europe/Stockholm")
-    # current_time = datetime.now(user_timezone)
-    # st.session_state.agent_session_state = {
-    #     "promptSessionAttributes": {
-    #         'firstName': 'John',
-    #         'currentDate': str(current_time),
-    #         'email': 'jonh.doe@xyz.com'
-    #     },
-    #     "sessionAttributes": {
-    #         'email': 'jonh.doe@xyz.com'
-    #     }
-    # }
 
 @st.cache_data
 def load_random_user_profiles():
@@ -147,68 +131,85 @@ def extract_email_and_body(trace):
         return email, email_body
     return None, None
 
-def reformat_product_output(response):
-    print('format')
-    products_match = re.search(r'(?s)<products>(.*?)</products>', response, re.DOTALL)
-    related_products_match = re.search(r'(?s)<relatedProducts>(.*?)</relatedProducts>', response, re.DOTALL)
-    compare_match = re.search(r'(?s)<compare>(.*?)</compare>', response, re.DOTALL)
-
-    products = None
-    related_products = None
+def reformat_product_output_list(response):
     compare_products=None
 
-    if products_match:
-        products_csv = products_match.group(1)
-        if products_csv:
-            products = products_csv.strip()
-    
-    if related_products_match:
-        related_products__csv = related_products_match.group(1)
-        if related_products__csv:
-            related_products = related_products__csv.strip()
-    
+    products_matches = re.findall(r'(?s)<products>(.*?)</products>', response, re.DOTALL)
+    related_products_matches = re.findall(r'(?s)<relatedProducts>(.*?)</relatedProducts>', response, re.DOTALL)
+    compare_match = re.search(r'(?s)<compare>(.*?)</compare>', response, re.DOTALL)
+
+    # Parse CSV content into lists
+    products_list = [pd.read_csv(io.StringIO(match)).to_dict(orient='records') for match in products_matches]
+    related_products_list = [pd.read_csv(io.StringIO(match)).to_dict(orient='records') for match in related_products_matches]
+
     if compare_match:
         csv_content = compare_match.group(1)
         if csv_content:
             compare_products = csv_content.strip()
-            
 
     # Remove both <products> and <relatedProducts> tags and their contents from the response
     response = re.sub(r'(?s)<products>(.*?)</products>', '', response, flags=re.DOTALL)
     response = re.sub(r'(?s)<relatedProducts>(.*?)</relatedProducts>', '', response, flags=re.DOTALL)
     response = re.sub(r'(?s)<compare>(.*?)</compare>', '', response, flags=re.DOTALL)
 
-    return response.strip(), products, related_products, compare_products
+    return response.strip(), products_list, related_products_list, compare_products
 
+def display_product_list_2(products_list):
+    products_history = ""
 
-def display_product_list_from_csv(products):
-    products_history= f""" """
+    for products in products_list:
+        if not products:
+            continue
 
-    df = pd.read_csv(io.StringIO(products))
+        i = 1
+        for product in products:
+            if isinstance(product, dict) and 'productId' in product:
+                product_id = product['productId']
+            else:
+                product_id = next(iter(product.keys())) # Assume first key as product_id if header not in json
 
-    if not df.empty:
-        i= 1
-        for _, row in df.iterrows():
-            product_id = row['Product Id']
             try:
-                product = st.session_state.product_service.get_product_details(product_id)
-                if product:
+                product_details = st.session_state.product_service.get_product_details(product_id)
+                if product_details:
                     products_history += f"""
-                | <img src="{product["image"]}" width="100" alt="{product["name"]}"> | {i}. **{product["name"]}** | Price: ${product["price"]} |
+                | <img src="{product_details["image"]}" width="100" alt="{product_details["name"]}"> | {i}. **{product_details["name"]}** | Price: ${product_details["price"]} |
                 """
 
                     col1, col2 = st.columns([1, 2])
                     with col1:
-                        st.image(product['image'], width=150)
+                        st.image(product_details['image'], width=150)
                     with col2:
-                        st.write(f"{i}. {product['name']}")
-                        st.write(f"${product['price']}")
-                        st.button(f"View Details", key=f"show_{product['id']}", on_click=show_product, args=(product,))
+                        st.write(f"{i}. {product_details['name']}")
+                        st.write(f"${product_details['price']}")
+                        st.button(f"View Details", key=f"show_{product_details['id']}", on_click=show_product, args=(product_details,))
                     
-                    i+=1
+                    i += 1
             except Exception as e:
                 print(f"An unexpected error occurred: {str(e)}")
     
+    return products_history
+
+    
+def display_product_list(products):
+    products_history= f""" """
+    for i, product in enumerate(products, 1):
+        try:
+            product = st.session_state.product_service.get_product_details(product['product_id'])
+            if product:
+                products_history += f"""
+            | <img src="{product["image"]}" width="100" alt="{product["name"]}"> | {i}. **{product["name"]}** | Price: ${product["price"]} |
+            """
+
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    st.image(product['image'], width=150)
+                with col2:
+                    st.write(f"{i}. {product['name']}")
+                    st.write(f"${product['price']}")
+                    st.button(f"View Details", key=f"show_{product['id']}", on_click=show_product, args=(product,))
+        except Exception as e:
+            print(f"An unexpected error occurred: {str(e)}")
+        
     return products_history
 
 def display_compare(text):
@@ -237,16 +238,12 @@ def display_compare(text):
         for index, row in df.iterrows():
             product = {
             'product_id': row['Product ID'],
-            'product_name': row['Product Name'],
-            "image_url": row['Image'],
+            'name': row['Product Name'],
+            "image": row['Image'],
             "price": row['Price'],
             "promoted": False
             }
             product_list.append(product)
-        
-        # # Apply custom renderers
-        # df['View Details'] =  df['Product ID']
-        #df['Image'] = df['Image'].apply(render_image)
 
         # Reorder columns
         column_order = ['Product Name', 'Image', 'Price'] + [col for col in df.columns if col not in [ 'Product ID', 'Product Name', 'Image', 'Price']]
@@ -262,21 +259,58 @@ def display_compare(text):
         use_container_width=True,
         )
 
-        display_product_list_from_csv(product_list)
+        display_product_list(product_list)
         
         st.session_state.messages.append({"role": "assistant", "content": create_markdown_table(df)})
                           
     return df   
 
 
+def add_prompt(prompt):
+    if prompt:
+        st.session_state.user_action = 'ADD_PROMPT'
+        st.session_state.user_prompt = prompt
+
+def load_sample_prompts():
+    st.write('Click to try Sample Prompts:')
+    col1, col2, col3, col4, col5, col6 = st.columns([1,2,1,1,1,1])
+    with col1:
+        text = 'Good quality tents for camping trip'
+        st.button(text, key="prompt_1", on_click=add_prompt, args=(text,))
+    with col2:
+        text = 'What kind of outfit should I wear on my first day at New York Times?'
+        st.button(text, key="prompt_2", on_click=add_prompt, args=(text,))
+    with col3:
+        text = 'Picnic snacks for 4 persons'
+        st.button(text, key="prompt_3", on_click=add_prompt, args=(text,))
+    with col4:
+        # Read recipe
+        recipe = ''  
+        data_path = os.path.join(os.path.dirname(__file__), "..", "assets", "data")
+        with open(f"{data_path}/recipe.txt", encoding='utf-8') as f:
+            recipe = f.read()
+        text = 'Cook vegeterian lasagne'
+        if recipe:
+            prompt = f"""Help me find any products available to buy for below recipe:\n\n
+            
+            {recipe}"""
+        else:
+            prompt= text
+        st.button(text, key="prompt_4", on_click=add_prompt, args=(prompt,))
+    with col5:
+        text = 'Moving to new apartment'
+        st.button(text, key="prompt_5", on_click=add_prompt, args=(text,))
+    with col6:
+        text = 'Gift for wedding anniversary'
+        st.button(text, key="prompt_6", on_click=add_prompt, args=(text,))
+    
+
 def show_product(product):
-    print('test button click with product', product)
     st.session_state.selected_product = product
     user_query = f'View details for **{product['name']}**'
     st.session_state.messages.append({"role": "user", "content": user_query})
 
 def buy_product(product,quantity):
-    print('test buy click')
     quantity = st.session_state[f"quantity_{product['id']}"]
     product_to_buy =  {
                 'product_id': product['id'],
@@ -290,7 +324,6 @@ def buy_product(product,quantity):
     st.session_state.messages.append({"role": "user", "content": user_query})
 
 def add_product(product, quantity):
-    print('test add click')
     quantity = st.session_state[f"quantity_{product['id']}"]
     product_to_buy =  {
                 'product_id': product['id'],
@@ -402,20 +435,27 @@ def create_shipping_form():
 
 def load_demo():
 
-    agent_option = st.session_state.agent_option
     chat_container = st.container(height=600)
     
     for message in st.session_state.messages:
-        # with st.chat_message(message["role"]):
         chat_container.chat_message(message["role"]).markdown(message["content"], unsafe_allow_html=True)
     
+    if  len(st.session_state.messages) <= 1:
+        with chat_container.chat_message("assistant"):
+            load_sample_prompts()
+    
     user_query = st.chat_input(placeholder="Ask me anything!", max_chars=750)
+
+    # Add Sample prompt
+    if st.session_state.user_prompt:
+        user_query = st.session_state.user_prompt
+        st.session_state.user_prompt = None
+
     if user_query:
         st.session_state.selected_product = None
         st.session_state.buy_product = None
         st.session_state.messages.append({"role": "user", "content": user_query})
 
-        # with st.chat_message("user"):
         chat_container.chat_message("user").write(user_query)
         
         with chat_container.chat_message("assistant"):
@@ -424,9 +464,9 @@ def load_demo():
                 response = GetAnswers(user_query, st.session_state.session_id, st.session_state.bedrock_agent, 
                                        st.session_state.config.SHOPPING_AGENT_ID, st.session_state.config.SHOPPING_AGENT_ALIAS_ID,
                                        st.session_state.agent_session_state)
-                print(response["output_text"])
+                # print(response["output_text"])
 
-                formatted_response, products, related_products, compare_products = reformat_product_output(response["output_text"])
+                formatted_response, products, related_products, compare_products = reformat_product_output_list(response["output_text"])
                 st.markdown(formatted_response, unsafe_allow_html=True)
                 st.session_state.messages.append({"role": "assistant", "content": formatted_response})
 
@@ -435,7 +475,7 @@ def load_demo():
                     st.markdown("---")
                     # Display the products as a list
                     st.write("Suggested Products:")
-                    products_history= display_product_list_from_csv(products)
+                    products_history= display_product_list_2(products)
                     st.session_state.messages.append({"role": "assistant", "content": products_history})
                 
                 if related_products:
@@ -443,7 +483,7 @@ def load_demo():
                     st.markdown("---")
                     # Display the products as a list
                     st.write("Products you might like:")
-                    related_products_history= display_product_list_from_csv(related_products)
+                    related_products_history= display_product_list_2(related_products)
                     st.session_state.messages.append({"role": "assistant", "content": related_products_history})
                     
                 if compare_products:
@@ -453,7 +493,6 @@ def load_demo():
     
     # Display selected product details
     if st.session_state.selected_product:
-        print('selected product')
         product= st.session_state.selected_product
         with chat_container.chat_message("assistant"):  
             with st.spinner('...'):
@@ -536,7 +575,7 @@ def load_demo():
         if st.session_state.user_action == 'BUY_PRODUCT':
             query = f"Add product { product_to_buy['product_name']} to cart. Place Order. \n{product_query}"
         else:
-            query = f"Add product { product_to_buy['product_name']} to cart. \n{product_query}"
+            query = f"Add product { product_to_buy['product_name']} to cart. \n{product_query}. \n Search catalog for complementary products."
         
         if st.session_state.shipping_details_provided is not None:
             data = st.session_state.shipping_details_provided
@@ -563,11 +602,9 @@ def load_demo():
                                        st.session_state.config.SHOPPING_AGENT_ID, st.session_state.config.SHOPPING_AGENT_ALIAS_ID,
                                        st.session_state.agent_session_state)
                     
-                    print(response["output_text"])
-                    # st.markdown(response["output_text"])
-                    # st.session_state.messages.append({"role": "assistant", "content": response["output_text"]})
+                    # print(response["output_text"])
 
-                    formatted_response, products, related_products, compare_products = reformat_product_output(response["output_text"])
+                    formatted_response, products, related_products, compare_products = reformat_product_output_list(response["output_text"])
                     st.markdown(formatted_response, unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": formatted_response})
 
@@ -576,7 +613,7 @@ def load_demo():
                         st.markdown("---")
                         # Display the products as a list
                         st.write("Suggested Products:")
-                        products_history= display_product_list_from_csv(products)
+                        products_history= display_product_list_2(products)
                         st.session_state.messages.append({"role": "assistant", "content": products_history})
                         
                     
@@ -585,7 +622,7 @@ def load_demo():
                         st.markdown("---")
                         # Display the products as a list
                         st.write("Products you might like:")
-                        related_products_history= display_product_list_from_csv(related_products)
+                        related_products_history= display_product_list_2(related_products)
                         st.session_state.messages.append({"role": "assistant", "content": related_products_history})
         
                     st.session_state.trace = response["trace"]
@@ -639,7 +676,7 @@ def load_trace():
                         if 'invocationInput' in trace and 'actionGroupInvocationInput' in trace['invocationInput']:
                             email, email_body = extract_email_and_body(trace)
                             if email and email_body:
-                                print("Email body:", email_body)
+                                # print("Email body:", email_body)
                                 st.session_state.email_confirmation = email_body
                               
         else:
@@ -699,8 +736,6 @@ def on_user_change():
         st.session_state.selected_user_profile = None
     initialize_session_state()
 
-    # st.session_state.selected_user_data = next((user for user in users_data if f"{user['first_name']} {user['last_name']} ({user['age']}, {user['gender']}, {user['persona']}, {user['discount_persona']})" == selected_user), None)
-
 
 
 def main():
@@ -722,15 +757,6 @@ def main():
         st.session_state.user_dropdown = ""
         initialize_session_state()
 
-    # Define the options for the dropdown
-    agent_options = [
-        {"label": "Shopping Agent", "value": st.session_state.config.SHOPPING_AGENT_ID}
-    ]
-
-    agent_option = st.sidebar.selectbox("Select an agent", agent_options, format_func=lambda option: option["label"], key='agent_option')
-    if agent_option['label'] == "Support Agent":
-        agent_title = "👩‍💼AnyCompanyCommerce Support Agent"
-        st.session_state.welcome_message = st.session_state.welcome_suppport_message
 
     chat_demo, session, trace, cost  = st.tabs(["Assistant", "Agent Session State", "Trace", 'Model Cost'])
     with session:
