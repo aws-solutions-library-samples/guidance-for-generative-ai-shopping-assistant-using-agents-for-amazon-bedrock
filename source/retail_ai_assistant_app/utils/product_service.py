@@ -19,6 +19,6 @@ class ProductService:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            st.error(f"Error fetching product details: {e}")
+            self.logger.error(f"Error fetching product details: {e}")
             return None
 

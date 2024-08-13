@@ -90,7 +90,7 @@ class BedrockShoppingAgentStack(NestedStack):
                 "bedrock:InvokeModel",
                 "bedrock:InvokeModelWithResponseStream"
             ],
-            resources=[f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"]
+            resources=[f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude*"]
         ))
 
         # Allow permission to retrieve documents from Knowledge Base.
