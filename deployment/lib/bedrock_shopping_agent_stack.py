@@ -3,7 +3,7 @@ import hashlib
 from aws_cdk import (
     NestedStack,
     Duration,
-    aws_lambda as _lambda,
+    aws_lambda as lambda_,
     aws_iam as iam,
     aws_ssm as ssm,
     aws_bedrock as bedrock,
@@ -55,23 +55,25 @@ class BedrockShoppingAgentStack(NestedStack):
         create_order_lambda_role.add_managed_policy(
             iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
         )
+
+        # Enable Lambda Extension Layer for reading SSM Parameter and Secrets from local cache
+        params_and_secrets = lambda_.ParamsAndSecretsLayerVersion.from_version(lambda_.ParamsAndSecretsVersions.V1_0_103,
+            cache_size=500,
+            log_level=lambda_.ParamsAndSecretsLogLevel.DEBUG
+        )
+
         # Create Lambda function for CreateOrder action
-        create_order_lambda = _lambda.Function(
+        create_order_lambda = lambda_.Function(
             self, "CreateOrderLambda",
             function_name=f"{app_name}-createorder-actions",
             role= create_order_lambda_role,
-            runtime=_lambda.Runtime.PYTHON_3_12,
+            runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
-            code=_lambda.Code.from_asset(lambda_code_path),
+            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "API_URL_PARAM": config.apigateway_url_param
             },
-            # Enable Lambda Extension Layer for reading SSM Parameter and Secrets from local cache
-            # Update ARN based on region & architecture here: https://docs.aws.amazon.com/systems-manager/latest/userguide/ps-integration-lambda-extensions.html
-            layers=[_lambda.LayerVersion.from_layer_version_arn(
-                self, "ParamterStoreLambdaExtensionLayer",
-                layer_version_arn="arn:aws:lambda:us-west-2:345057560386:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11"
-            )],
+            params_and_secrets = params_and_secrets,
             timeout=Duration.seconds(30),
             memory_size=256
         )

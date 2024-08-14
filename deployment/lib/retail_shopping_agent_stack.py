@@ -125,6 +125,12 @@ class RetailShoppingAgentStack(Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
         )
 
+        # Enable Lambda Extension Layer for reading SSM Parameter and Secrets from local cache
+        params_and_secrets = lambda_.ParamsAndSecretsLayerVersion.from_version(lambda_.ParamsAndSecretsVersions.V1_0_103,
+            cache_size=500,
+            log_level=lambda_.ParamsAndSecretsLogLevel.DEBUG
+        )
+
         process_product_catalog_lambda = lambda_.Function(
             self, "UploadAndSyncProductCatalogToKB",
             function_name=f"{config.app_name}-upload-product-catalog-and-sync-kb",
@@ -141,12 +147,7 @@ class RetailShoppingAgentStack(Stack):
                 "DATA_SOURCE_ID": data_source_id,
                 "SSM_PARAMETER_STORE_TTL" : "120" # Time to live for ssm parameter cache in seconds
             },
-            # Enable Lambda Extension Layer for reading SSM Parameter and Secrets from local cache
-            # Update ARN based on region & architecture here: https://docs.aws.amazon.com/systems-manager/latest/userguide/ps-integration-lambda-extensions.html
-            layers=[lambda_.LayerVersion.from_layer_version_arn(
-                self, "ParamterStoreLambdaExtensionLayer",
-                layer_version_arn="arn:aws:lambda:us-west-2:345057560386:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11"
-            )],
+            params_and_secrets=params_and_secrets,
             memory_size=1024,
             timeout=Duration.minutes(5)
         )
