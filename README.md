@@ -156,7 +156,6 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
      export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
      export CDK_DEFAULT_REGION=$(aws configure get region)
      ```
-
 6. **Enable Cognito Hosted UI Authentication (Optional but Recommended)**
 - To enable Authentication and HTTPS encryption for the app:
    - Copy the `.env.example` file to `.env`:
