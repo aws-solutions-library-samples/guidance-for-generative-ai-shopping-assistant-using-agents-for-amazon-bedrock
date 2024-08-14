@@ -149,7 +149,14 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
      ```bash
      aws configure
      ```
-5. **Enable Cognito Hosted UI Authentication (Optional but Recommended)**
+
+5. **Set CDK Default Account and Region**
+   - Set the environment variables for CDK default account and region:
+     ```bash
+     export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+     export CDK_DEFAULT_REGION=$(aws configure get region)
+     ```
+6. **Enable Cognito Hosted UI Authentication (Optional but Recommended)**
 - To enable Authentication and HTTPS encryption for the app:
    - Copy the `.env.example` file to `.env`:
      ```bash
@@ -162,13 +169,13 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
      ```
    Replace `your-route53-hosted-zone-domain-name` and `yyour-route53-hosted-zone-id` with your actual Amazon Route 53 Hosted Zone name and ID.
 
-6. **Deploy All Stacks**
+7. **Deploy All Stacks**
    - Deploy all stacks defined in the `app.py`:
      ```bash
      cdk deploy --all
      ```
 
-7. **CDK Deploy Stack Summary**
+8. **CDK Deploy Stack Summary**
     - The cdk will deploy the following Parent Stacks:
       - **S3CloudFrontStack**: Sets up Amazon CloudFront distribution and Amazon S3 bucket for image hosting.
       - **AppStack**: Deploys the Retail AI assistant Streamlit app on ECS Fargate and enables Cognito Hosted UI authentication if Route53 Hosted Zone details are provided.
