@@ -192,13 +192,16 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 - Verify the deployment by checking the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation) for the status of all stacks.
 - Ensure all resources are created successfully in the specified cdk AWS region.
 - Verify Product catalog Knowledge Base was setup successfully:
-   - Capture the Cloudformation output value for `ProductCatalog-KnowledgeBaseName` in `ShoppingAgentStack`stack.
+   - Capture the Cloudformation output value for `ProductCatalog-KnowledgeBaseName` in `{app-name}ShoppingAgentStack`stack.
    - Navigate to the above product catalog knowledge base details page through [Knowledge Bases in Amazon Bedrock console](https://console.aws.amazon.com/bedrock). 
    - Scroll down to the `Data Source` section, open the S3 data source and verify the **Status** and **Source Files** count in *Sync History* as below:
 
    ![Product Catalog KB Data Source Sync](assets/images/deployment_01_validate_kb_data_source.png)
 
    - Check the [Known Issues](#faq-known-issues-additional-considerations-and-limitations) section for solution if the data is not ingested correctly.
+- Verify product images are uploaded to Cloudfront S3 bucket:
+   - Capture the Cloudformation output value for `{app-name}S3BucketName` in `{app-name}S3CloudFrontStack`stack.
+   - Navigate to Amazon S3 console and verify the images are uploaded to above S3 bucket under `images\` path. Check the [Known Issues](#faq-known-issues-additional-considerations-and-limitations) section for solution if the images are missing.
 
 ## Running the Guidance 
 1. **Capture the AppUrl**
@@ -307,9 +310,9 @@ cdk destroy --all
 
 **Known issues**
 
-- **Amazon Bedrock Knowledge Base Sync**: Knowledge Base for Amazon Bedrock will be created and synced automatically only during first deployment. If deployment fails, you will need to trigger Lambda function `upload_product_catalog_and_sync_kb` manually by clicking on `Test` from AWS Lambda Console.
+- **Amazon Bedrock Knowledge Base not synced**: Knowledge Base for Amazon Bedrock will be created and synced automatically only during first deployment. If deployment fails, you will need to trigger Lambda function `upload_product_catalog_and_sync_kb` manually by clicking on `Test` from AWS Lambda Console.
 
-- **Upload Product Catalog Images**: The product catalog images will be uploaded to S3 bucket automatically only during first deployment. If deployment fails, you will need to trigger Lambda function `upload_product_images` manually by clicking on `Test` from AWS Lambda Console.
+- **Missing product catalog images in S3**: The product catalog images will be uploaded to S3 bucket automatically only during first deployment. If deployment fails, you will need to trigger Lambda function `upload_product_images` manually by clicking on `Test` from AWS Lambda Console.
 
 - **Search Result Variability**: As a large language model (LLM), the agent may produce varying search results with each request. Implement robust validation mechanisms to ensure consistency and accuracy.
 
@@ -318,15 +321,15 @@ cdk destroy --all
 
 **Additional considerations**
 
-- **Update Frontend web app**: The Guidance deploys the frontend Streamlit app for demonstration purpose only. It is deployed on ECS container in public subnet with restricted traffic from Load Balancer's security group. Update the frontend app with more robust & secure framework & services. 
+- **Update Frontend web app**: The Guidance deploys the frontend Streamlit app for demonstration purpose only. It is deployed on ECS container in public subnet with restricted traffic from Load Balancer's security group. Update the frontend app to secure framework using [AWS Well Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html).
 
-- **Public Resources**: The Guidance deploys unauthenticated public API endpoints and S3 buckets with CloudFront distribution. Be aware of potential security risks and take appropriate measures to secure these resources using [AWS Well Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html).
+- **Public Resources**: The Guidance deploys unauthenticated public API endpoints and S3 buckets with CloudFront distribution. Be aware of potential security risks and take appropriate measures to secure these resources.
 
 - **Use Multiple Agents**: Use Agents dedicated to specific task such as product search, inventory management, and order management. This approach helps distribute workload and optimize performance.
 
 - **Model Selection**: Balance model usage based on task complexity, cost, and response time needs. Utilize Anthropic Claude 3 Sonnet model for complex tasks requiring high performance. For simpler tasks, opt for the Claude 3 Haiku model, which offers faster response times and lower costs. 
 
-- **Enhance Security**: Move API calls to AWS Lambda and API Gateway for added security and separation from the frontend. Enable Cognito authentication and HTTPS encryption for all communications.
+- **Enhance Security**: Move Bedrock API calls to AWS Lambda and API Gateway for added security and separation from the frontend. Enable Cognito authentication and HTTPS encryption for all communications.
 
 - **Cost Considerations**: Costs for Bedrock model are determined by the number of tokens processed. Use AWS Cost Explorer to track and optimize these expenses.
 
