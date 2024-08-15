@@ -23,7 +23,7 @@
 This Guidance demonstrates how to create powerful, generative AI-driven shopping assistant that enhances customer experience and drives sales through context-aware, AI-powered interactions. The solution utilizes [Agents for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html) to orchestrate various functions like personalized and related product recommendations, dynamic contextual product comparisons, cart management, and automated order & email confirmation. The agent seamlessly integrates with existing company systems and data securely and minimizes the time and complexity needed for building sophisticated LLM (Large Language Model) Agents. 
 
 ### Solution Overview
-This Guidance deploys a Streamlit-based Python web application on Amazon ECS Fargate, which calls the [Amazon Bedrock API](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) for natural language conversations. The Shopping Agent is built using Agents for Amazon Bedrock which utilizes Anthropic's Claude Sonnet 3 model to interpret user queries and orchestrate multi-step tasks for efficient shopping experience. 
+This Guidance deploys a Streamlit-based Python web application on Amazon ECS Fargate, which calls the [Amazon Bedrock API](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) for natural language conversations. The Shopping Agent is built using Agents for Amazon Bedrock which utilizes Anthropic's Claude 3 Sonnet model to interpret user queries and orchestrate multi-step tasks for efficient shopping experience. 
 
 To assist customers in finding relevant products, the Shopping Agent is integrated with a [Knowledges Bases for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-bases.html), which embeds product catalog details from Amazon S3 and stores them in [Amazon OpenSearch Serverless](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/serverless.html) for vector search. Additionally, the Shopping Agent includes an Action Group that utilizes AWS Lambda function with OpenAPI Schema to manage API operations such as order creation, inventory checks, and sending email confirmations. 
 
@@ -60,14 +60,14 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | Amazon OpenSearch Serverless | 1 GB index data, minimum non-HA usage cost, 0.5 OCU for Indexing, 0.5 OCU for Search and Query      | $175.22     |
 | Amazon CloudWatch Logs       | 10 GB Standard Logs & 5 GB VPC Logs                                                        | $7.57      |
 | Amazon Titan Text Embeddings v1       | On-Demand, for embedding 2,20,00,000 input tokens                                                | $2.20      |
-| Amazon Bedrock Agent - Anthropic Claude Sonnet 3       | On-Demand, Average 6000 input tokens & 500 output tokens for 100,000 product search queries                                                  | $2550.00      |
+| Amazon Bedrock Agent - Anthropic Claude 3 Sonnet       | On-Demand, Average 6000 input tokens & 500 output tokens for 100,000 product search queries                                                  | $2550.00      |
 | **Total**                    |                                                                            | **$2,777.76** |
 
 **Cost Considerations:**
 
 - **OpenSearch Serverless**: This service incurs minimum cost of 1 OCU even when not in use. Check [Amazon OpenSearch Serverless updated pricing](https://aws.amazon.com/about-aws/whats-new/2024/06/amazon-opensearch-serverless-entry-cost-half-collection-types/) as of June 2024.
 
-- **Anthropic Claude Sonnet 3 Model**: Costs are determined by the number of tokens processed during agent conversation. This model is large and optimized for complex tasks, which may result in higher costs for extensive usage. See [considerations](#faq-known-issues-additional-considerations-and-limitations) section for optimization.       
+- **Anthropic Claude 3 Sonnet Model**: Costs are determined by the number of tokens processed during agent conversation. This model is large and optimized for complex tasks, which may result in higher costs for extensive usage. See [considerations](#faq-known-issues-additional-considerations-and-limitations) section for optimization.       
 
 
 ## Prerequisites 
@@ -84,7 +84,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 ### AWS account requirements
 
-- This deployment requires you to have access granted to Amazon Bedrock for Anthropic's Claude Sonnet 3 and Amazon's Titan embedding models in your AWS region.
+- This deployment requires you to have access granted to Amazon Bedrock for Anthropic's Claude 3 Sonnet, Claude 3 Haiku and Amazon's Titan embedding models in your AWS region.
 - Check Models support by AWS Region [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-regions.html).
 
 **AWS resources required:**
@@ -99,7 +99,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 -  IAM user or role with permissions to create resources in the target AWS account and region to be used for CDK deployment.
 
 ### Amazon Bedrock Model Access
-   - Request access for Anthropic's Claude Sonnet 3 and Amazon'a Titan embedding models from the AWS Management Console.
+   - Request access for Anthropic's Claude 3 Sonnet, Claude 3 Haiku and Amazon'a Titan embedding models from the AWS Management Console.
    - Follow the steps in the [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) to request model access.
 
 ### aws cdk bootstrap
@@ -117,7 +117,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 
 ### Supported Regions
    - This Guidance is best suited for deployment in US East (N. Virginia) `us-east-1` and US West (Oregon) `us-west-2`.
-   - It must be deployed in regions where Amazon OpenSearch Serverless, Agents for Amazon Bedrock and access to Anthropic's Claude Sonnet 3 and Amazon's Titan embeddings models are available.
+   - It must be deployed in regions where Amazon OpenSearch Serverless, Agents for Amazon Bedrock and access to Anthropic's Claude 3 Sonnet, Claude 3 Haiku and Amazon's Titan embeddings models are available.
    - Check AWS regional service availability [here](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/).
 
 
@@ -267,7 +267,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 
 8. **View Model Cost for current session**
 - Naviagte to `Model Cost` tab to view the total agent invoke request, input and ouput tokens with approximate model cost for the ongoing session. 
-- TThe cost is calculated using Bedrock Anthropic Claude Sonnet 3 model's on-demand pricing for the us-east-1 region as of August 2024. For the latest pricing information, please refer to the [Amazon Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
+- TThe cost is calculated using Bedrock Anthropic Claude 3 Sonnet model's on-demand pricing for the us-east-1 region as of August 2024. For the latest pricing information, please refer to the [Amazon Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
 
 
 ## Next Steps
@@ -275,7 +275,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 Here are some next steps to consider for improving robustness and accuracy of the agent.
 - Customize the agent to your specific use case, data, and API requirements.
 
-- The agent's instructions and prompt templates are optimized for Anthropic Claude Sonnet 3 model. You can use the same agent model to generate new or updated instrcuctions.
+- The agent's instructions and prompt templates are optimized for Anthropic Claude 3 Sonnet model. You can use the same agent model to generate new or updated instrcuctions.
 
 - Implement robust validation mechanisms for LLM response before presenting to the customer. 
 
@@ -313,11 +313,11 @@ cdk destroy --all
 
 **Additional considerations**
 
-- **Public Resources**: The Guidance deploys unauthenticated public API endpoints and S3 buckets with CloudFront distribution. Be aware of potential security risks and take appropriate measures to secure these resources.
+- **Public Resources**: The Guidance deploys unauthenticated public API endpoints and S3 buckets with CloudFront distribution. The ECS container is currently deployed in public subnet with restricted traffic from Load Balancer's security group. Be aware of potential security risks and take appropriate measures to secure these resources using [AWS Well Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html).
 
 - **Use Multiple Agents**: Use Agents dedicated to specific task such as product search, inventory management, and order management. This approach helps distribute workload and optimize performance.
 
-- **Model Selection**: Balance model usage based on task complexity, cost, and response time needs. Utilize Anthropic Claude Sonnet 3 model for complex tasks requiring high performance. For simpler tasks, opt for the Claude Haiku 3 model, which offers faster response times and lower costs. 
+- **Model Selection**: Balance model usage based on task complexity, cost, and response time needs. Utilize Anthropic Claude 3 Sonnet model for complex tasks requiring high performance. For simpler tasks, opt for the Claude 3 Haiku model, which offers faster response times and lower costs. 
 
 - **Enhance Security**: Move API calls to AWS Lambda and API Gateway for added security and separation from the frontend. Enable Cognito authentication and HTTPS encryption for all communications.
 

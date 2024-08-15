@@ -50,6 +50,12 @@ class BedrockShoppingAgentStack(NestedStack):
             actions=["ssm:GetParameter"],
             resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{config.app_name}/*"]
         ))
+        
+        # Grant the Lambda function permission to read app secrets from Secrets Store Manager
+        create_order_lambda_role.add_to_policy(iam.PolicyStatement(
+            actions=["secretsmanager:GetSecretValue"],
+            resources=[f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:{app_name}/*"]
+        ))
 
         # Grant the Lambda function permission to put logs in CloudWatch
         create_order_lambda_role.add_managed_policy(
@@ -71,7 +77,8 @@ class BedrockShoppingAgentStack(NestedStack):
             handler="index.handler",
             code=lambda_.Code.from_asset(lambda_code_path),
             environment={
-                "API_URL_PARAM": config.apigateway_url_param
+                "API_URL_PARAM": config.product_service_url_param,
+                "API_KEY_SECRET_NAME": config.product_service_apikey_secret
             },
             params_and_secrets = params_and_secrets,
             timeout=Duration.seconds(30),

@@ -24,7 +24,8 @@ class Config:
 
         # Add the SSM param names keys
         self.cloudfront_url_param = f"/{self.app_name}/cloudfront/url"
-        self.apigateway_url_param = f"/{self.app_name}/apigateway/url"
+        self.product_service_url_param = f"/{self.app_name}/product-service/api-url"
+        self.product_service_apikey_secret = f"/{self.app_name}/product-service/api-key"
 
         self.cognito_client_secret_param = f"/{self.app_name}/cognito/client-secret"
         self.cognito_client_id_param = f"/{self.app_name}/cognito/client-id"

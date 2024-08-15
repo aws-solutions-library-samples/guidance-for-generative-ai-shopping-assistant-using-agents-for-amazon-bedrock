@@ -85,7 +85,7 @@ def initialize_session_state():
     if 'bedrock_agent' not in st.session_state:
         st.session_state.bedrock_agent = BedrockAgent(st.session_state.config.SESSION, st.session_state.logger)
     if 'product_service' not in st.session_state:
-        st.session_state.product_service = ProductService(st.session_state.config.API_URL, st.session_state.logger)
+        st.session_state.product_service = ProductService(st.session_state.config.API_URL, st.session_state.config.API_KEY, st.session_state.logger)
     if 'total_input_tokens' not in st.session_state:
         st.session_state.total_input_tokens =0
     if 'total_output_tokens' not in st.session_state:

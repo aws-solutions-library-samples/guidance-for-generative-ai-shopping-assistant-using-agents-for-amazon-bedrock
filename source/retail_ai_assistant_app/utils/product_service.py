@@ -1,6 +1,6 @@
 # utils/product_service.py
 
-import os
+import json
 import requests
 from dotenv import load_dotenv
 import streamlit as st
@@ -9,13 +9,19 @@ import streamlit as st
 load_dotenv()
 
 class ProductService:
-    def __init__(self, _api_url, _logger):
+    def __init__(self, _api_url, _api_key, _logger):
         self.api_url = _api_url
+        self.api_key = _api_key
         self.logger = _logger
 
     def get_product_details(self, product_id):
         try:
-            response = requests.get(f"{self.api_url}/products/id/{product_id}")
+            api_key_json = {"api_key":self.api_key}
+            headers = {
+                'Content-Type': 'application/json',
+                'x-api-key': self.api_key
+            }
+            response = requests.get(f"{self.api_url}/products/id/{product_id}", headers=headers)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
