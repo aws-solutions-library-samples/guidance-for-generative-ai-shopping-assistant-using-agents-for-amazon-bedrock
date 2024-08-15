@@ -66,4 +66,3 @@ class Config:
             return keys
         else:
             return ''
-        
