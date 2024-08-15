@@ -165,7 +165,7 @@ def authenticate_user():
     initialize_session_vars()    
     
     # Cognito Hosted UI Auth is disabled on deployed ECS App if custom domain is not provided
-    if not st.session_state.config.REDIRECT_URI:
+    if not st.session_state.config.COGNITO_POOL_ID:
         return True
     
     # Validate logout state after redirecting from Cognito Login page using logout redirect_uri

@@ -134,7 +134,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 2. **Set Up Python Virtual Environment**
    - Create and activate a Python virtual environment:
      ```bash
-     python3 -m venv .venv # Or use `python -m venv .venv`
+     python3 -m venv venv # Or use `python -m venv venv`
      source .venv/bin/activate  # On Windows, use `.venv\Scripts\activate`
      ```
 
@@ -155,6 +155,11 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
      ```bash
      export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
      export CDK_DEFAULT_REGION=$(aws configure get region)
+     ```
+     For powershell:
+     ```powershell
+     $env:CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+     $env:DK_DEFAULT_REGION=$(aws configure get region)
      ```
 6. **Enable Cognito Hosted UI Authentication (Optional but Recommended)**
 - To enable Authentication and HTTPS encryption for the app:
@@ -313,7 +318,9 @@ cdk destroy --all
 
 **Additional considerations**
 
-- **Public Resources**: The Guidance deploys unauthenticated public API endpoints and S3 buckets with CloudFront distribution. The ECS container is currently deployed in public subnet with restricted traffic from Load Balancer's security group. Be aware of potential security risks and take appropriate measures to secure these resources using [AWS Well Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html).
+- **Update Frontend web app**: The Guidance deploys the frontend Streamlit app for demonstration purpose only. It is deployed on ECS container in public subnet with restricted traffic from Load Balancer's security group. Update the frontend app with more robust & secure framework & services. 
+
+- **Public Resources**: The Guidance deploys unauthenticated public API endpoints and S3 buckets with CloudFront distribution. Be aware of potential security risks and take appropriate measures to secure these resources using [AWS Well Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html).
 
 - **Use Multiple Agents**: Use Agents dedicated to specific task such as product search, inventory management, and order management. This approach helps distribute workload and optimize performance.
 
@@ -350,17 +357,9 @@ To run the application locally, follow these steps:
      ```
 
 4. **Retrieve Values from AWS Systems Manager Parameter Store**
-   - Navigate to the `AWS Systems Manager Parameter Store` in the AWS Management Console.
-   - Search for the following parameter store keys and fill out the corresponding values in your `.env` file.
+   - Navigate to the `AWS Systems Manager Parameter Store` & `AWS Secrets Manage Store` using separate tabs in the AWS Management Console.
+   - Search for the following parameter store keys or secrets to fill out the corresponding values in your `.env` file.
    - Note: `{app_name}` will be name of your app specified in [deployment/lib/config.py](deployment/lib/config.py).
-
-     - **USER_POOL_ID**: `/${app_name}/cognito/user-pool-id`
-     - **USER_POOL_CLIENT_ID**: `/${app_name}/cognito/client-id`
-     - **USER_POOL_CLIENT_SECRET**: `/${app_name}/cognito/client-secret`
-     - **USER_POOL_DOMAIN**: `/${app_name}/cognito/user-pool-domain`
-     - **API_URL**: `/${app_name}/apigateway/url`
-     - **SHOPPING_AGENT_ID**: `/${app_name}/bedrock/shopping-agent-id`
-     - **SHOPPING_AGENT_ALIAS_ID**: `/${app_name}/bedrock/shopping-agent-alias-id` (No Alias ID will invoke Draft Agent version)
 
 5. **Set AWS Region and Account ID**
    - In the `.env` file, also set the following values:
