@@ -72,7 +72,7 @@ class EcsAppStack(NestedStack):
         # Grant the ECS Task permission to read app secrets from Secrets Store Manager
         task_role.add_to_policy(iam.PolicyStatement(
             actions=["secretsmanager:GetSecretValue"],
-            resources=[f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:{app_name}/*"]
+            resources=[f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:/{app_name}/*"]
         ))
 
         # Add permissions to invoke the specific Bedrock agent 
@@ -206,38 +206,6 @@ class EcsAppStack(NestedStack):
                 log_retention=logs.RetentionDays.TWO_WEEKS
             ),
             secrets={
-                "USER_POOL_ID": ecs.Secret.from_ssm_parameter(
-                    ssm.StringParameter.from_string_parameter_attributes(
-                        self, "UserPoolId",
-                        parameter_name= config.cognito_user_pool_id_param,
-                        version=1,
-                        simple_name=False
-                    )
-                ),
-                "USER_POOL_DOMAIN": ecs.Secret.from_ssm_parameter(
-                    ssm.StringParameter.from_string_parameter_attributes(
-                        self, "UserPoolDomain",
-                        parameter_name= config.cognito_user_pool_domain_param,
-                        version=1,
-                        simple_name=False
-                    )
-                ),
-                "USER_POOL_CLIENT_ID": ecs.Secret.from_ssm_parameter(
-                    ssm.StringParameter.from_string_parameter_attributes(
-                        self, "ClientId",
-                        parameter_name= config.cognito_client_id_param,
-                        version=1,
-                        simple_name=False
-                    )
-                ),
-                "USER_POOL_CLIENT_SECRET": ecs.Secret.from_ssm_parameter(
-                    ssm.StringParameter.from_string_parameter_attributes(
-                        self, "ClientSecret",
-                        parameter_name= config.cognito_client_secret_param,
-                        version=1,
-                        simple_name=False
-                    )
-                ),
                 "CLOUDFRONT_URL": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "CloudfrontUrl",
@@ -345,8 +313,48 @@ class EcsAppStack(NestedStack):
         )
 
         if self.domain_name:
-            # Update the container definition to include the REDIRECT_URI if hosted using custom_domain for Authentication
+            # Update the container definition to add Cognito parameters if hosted using custom_domain for Authentication
             task_definition.default_container.add_environment("REDIRECT_URI", self.app_url)
+            task_definition.default_container.add_secret(
+                "USER_POOL_ID", ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "UserPoolId",
+                        parameter_name= config.cognito_user_pool_id_param,
+                        version=1,
+                        simple_name=False
+                    )
+                )
+            )
+            task_definition.default_container.add_secret(
+                "USER_POOL_DOMAIN", ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "UserPoolDomain",
+                        parameter_name= config.cognito_user_pool_domain_param,
+                        version=1,
+                        simple_name=False
+                    )
+                )
+            )
+            task_definition.default_container.add_secret(
+                "USER_POOL_CLIENT_ID", ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "ClientId",
+                        parameter_name= config.cognito_client_id_param,
+                        version=1,
+                        simple_name=False
+                    )
+                )
+            )
+            task_definition.default_container.add_secret(
+                "USER_POOL_CLIENT_SECRET", ecs.Secret.from_ssm_parameter(
+                    ssm.StringParameter.from_string_parameter_attributes(
+                        self, "ClientSecret",
+                        parameter_name= config.cognito_client_secret_param,
+                        version=1,
+                        simple_name=False
+                    )
+                )
+            )
 
         # Output the App URL from ECS Stack
         CfnOutput(self, "AppUrl", value=self.app_url, description="The URL of the deployed application")

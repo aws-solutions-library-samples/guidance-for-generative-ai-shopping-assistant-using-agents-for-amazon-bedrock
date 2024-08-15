@@ -59,7 +59,11 @@ class Config:
 
         
     def get_jwt_keys(self):
-        keys_url = 'https://cognito-idp.{}.amazonaws.com/{}/.well-known/jwks.json'.format(self.AWS_REGION, self.COGNITO_POOL_ID)
-        response = requests.get(keys_url).json()
-        keys = response['keys']
-        return keys
+        if self.COGNITO_POOL_ID:
+            keys_url = 'https://cognito-idp.{}.amazonaws.com/{}/.well-known/jwks.json'.format(self.AWS_REGION, self.COGNITO_POOL_ID)
+            response = requests.get(keys_url).json()
+            keys = response['keys']
+            return keys
+        else:
+            return ''
+        

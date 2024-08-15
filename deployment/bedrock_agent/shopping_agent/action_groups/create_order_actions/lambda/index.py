@@ -39,7 +39,7 @@ def get_secret(secret_name):
         encoded_param_name = urllib.parse.quote(secret_name)
 
         # Retrieve parameter from Parameter Store using extension cache
-        req = urllib.request.Request(f'http://localhost:2773/systemsmanager/secretsmanager/get?secretId={encoded_param_name}')
+        req = urllib.request.Request(f'http://localhost:2773/secretsmanager/get?secretId={encoded_param_name}')
         req.add_header('X-Aws-Parameters-Secrets-Token', aws_session_token)
         response = urllib.request.urlopen(req)
         secret = response.read()

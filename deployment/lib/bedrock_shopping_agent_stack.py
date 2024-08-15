@@ -54,7 +54,7 @@ class BedrockShoppingAgentStack(NestedStack):
         # Grant the Lambda function permission to read app secrets from Secrets Store Manager
         create_order_lambda_role.add_to_policy(iam.PolicyStatement(
             actions=["secretsmanager:GetSecretValue"],
-            resources=[f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:{app_name}/*"]
+            resources=[f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:/{app_name}/*"]
         ))
 
         # Grant the Lambda function permission to put logs in CloudWatch
