@@ -124,7 +124,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 ## Deployment Steps
 
 1. **Clone the Repository**
-   - Clone the repository and naviagte to deployment fodler using the following commands:
+   - Clone the repository and navigate to `deployment` folder using the following commands:
      ```bash
      git clone https://github.com/aws-solutions-library-samples/guidance-for-generative-ai-shopping-assistant-using-agents-for-amazon-bedrock.git
 
@@ -174,19 +174,28 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
      ```
    Replace `your-route53-hosted-zone-domain-name` and `yyour-route53-hosted-zone-id` with your actual Amazon Route 53 Hosted Zone name and ID.
 
-7. **Deploy All Stacks**
+7. **Ensure Docker is Running**
+   - Verify [Docker](https://docs.docker.com/get-docker/) is installed and running on your local machine:
+     ```bash
+     docker info
+     ```
+   - If Docker is running correctly, you should see system-wide information about your Docker installation.
+   - If you encounter any errors, start the Docker daemon and try again.
+
+8. **Deploy All Stacks**
    - Deploy all stacks defined in the `app.py`:
      ```bash
      cdk deploy --all
      ```
 
-8. **CDK Deploy Stack Summary**
+9. **CDK Deploy Stack Summary**
     - The cdk will deploy the following Parent Stacks:
       - **S3CloudFrontStack**: Sets up Amazon CloudFront distribution and Amazon S3 bucket for image hosting.
       - **AppStack**: Deploys the Retail AI assistant Streamlit app on ECS Fargate and enables Cognito Hosted UI authentication if Route53 Hosted Zone details are provided.
       - **ProductServiceStack**: Creates the product service API using AWS Lamda and API Gateway.
       - **ShoppingAgentStack**: Implements the Retail shopping agent functionality using Agents for Amazon Bedrock and Knowledgse Base with Amazon OpenSearch Serverless vector store.
-    - Dependencies are set to ensure proper resource creation order.
+      - **UploadCatalogAndKBSyncStack**: Implements custom resource lambda to upload product details to Amazon S3 Data Source and Start Knowledge Base Ingestion Job.
+      - Dependencies are set to ensure proper resource creation order.
 
 ## Deployment Validation
 - Verify the deployment by checking the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation) for the status of all stacks.
@@ -198,10 +207,10 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 
    ![Product Catalog KB Data Source Sync](assets/images/deployment_01_validate_kb_data_source.png)
 
-   - Check the [Known Issues](#faq-known-issues-additional-considerations-and-limitations) section for solution if the data is not ingested correctly.
+   - Check the [Known Issues](#faq-known-issues-additional-considerations-and-limitations) section for fix if the data is not ingested correctly.
 - Verify product images are uploaded to Cloudfront S3 bucket:
    - Capture the Cloudformation output value for `{app-name}S3BucketName` in `{app-name}S3CloudFrontStack`stack.
-   - Navigate to Amazon S3 console and verify the images are uploaded to above S3 bucket under `images\` path. Check the [Known Issues](#faq-known-issues-additional-considerations-and-limitations) section for solution if the images are missing.
+   - Navigate to Amazon S3 console and verify the images are uploaded to above S3 bucket under `images\` path. Check the [Known Issues](#faq-known-issues-additional-considerations-and-limitations) section for fix if the images are missing.
 
 ## Running the Guidance 
 1. **Capture the AppUrl**

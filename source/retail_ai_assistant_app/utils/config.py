@@ -1,8 +1,8 @@
 # config.py
 import os
-import json
 import boto3
 import requests
+from jwt import PyJWKClient
 from dotenv import load_dotenv
 
 class Config:
@@ -21,7 +21,7 @@ class Config:
         self.AWS_ACCOUNT_ID, self.AWS_REGION, self.SESSION = self.get_aws_env_values()
         self.MODEL_INPUT_TOKEN_PRICE = 0.003 # Price per 1000 tokens
         self.MODEL_OUTPUT_TOKEN_PRICE = 0.015 # Price per 1000 tokens
-        self.JWT_KEYS = self.get_jwt_keys()
+        self.JWKS_CLIENT = self.get_jwks_client()
 
     
     def get_aws_env_values(self):
@@ -57,12 +57,10 @@ class Config:
         
         return AWS_ACCOUNT_ID, AWS_REGION, SESSION
 
-        
-    def get_jwt_keys(self):
+    def get_jwks_client(self):
         if self.COGNITO_POOL_ID:
             keys_url = 'https://cognito-idp.{}.amazonaws.com/{}/.well-known/jwks.json'.format(self.AWS_REGION, self.COGNITO_POOL_ID)
-            response = requests.get(keys_url).json()
-            keys = response['keys']
-            return keys
+            jwks_client = PyJWKClient(keys_url)
+            return jwks_client
         else:
-            return ''
+            return None
