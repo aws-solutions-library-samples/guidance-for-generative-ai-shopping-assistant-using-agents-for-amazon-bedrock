@@ -95,6 +95,16 @@ class CognitoStack(NestedStack):
         user_pool_client_cf: cognito.CfnUserPoolClient = self.user_pool_client.node.default_child
         user_pool_client_cf.logout_ur_ls = logout_urls
 
+        # Store the API Key in Secrets Manager
+        self.api_key_secret = secretsmanager.Secret(self, f"{app_name}-product-service-api-key-secret",
+            secret_name=config.product_service_apikey_secret,
+            description=f"API Key for {app_name}",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                secret_string_template=json.dumps({"api_key": f"{app_name}-product-service-api-key"}),
+                generate_string_key="api_key"
+            )
+        )
+
         # Store cognito propoerties in Parameter Store as a simple string
         self.client_secret_param = ssm.StringParameter(
             self,
