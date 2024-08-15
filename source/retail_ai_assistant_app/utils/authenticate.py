@@ -1,13 +1,11 @@
 # auth.py
 import base64
 from utils.config import Config
-from dotenv import load_dotenv
 from datetime import datetime, timezone
 import requests
 import urllib.parse
 import streamlit as st
-from jose import jwk, jwt
-from jose.utils import base64url_decode
+import jwt
 
 def initialize_session_vars():
     """Initialize Streamlit session state variables."""
@@ -35,37 +33,17 @@ def reset_session_state():
 def decode_jwt(token):
     """Decode JWT token."""
     try:
-        # get the kid from the headers prior to verification
-        headers = jwt.get_unverified_headers(token)
-        kid = headers['kid']
-        # search for the kid in the downloaded public keys
-        key_index = -1
-        keys = st.session_state.config.JWT_KEYS
-        for i in range(len(keys)):
-            if kid == keys[i]['kid']:
-                key_index = i
-                break
-        if key_index == -1:
-            print('Public key not found in jwks.json')
-            return False
-        # construct the public key
-        public_key = jwk.construct(keys[key_index])
-        # get the last two sections of the token,
-        # message and signature (encoded in base64)
-        message, encoded_signature = str(token).rsplit('.', 1)
-        # decode the signature
-        decoded_signature = base64url_decode(encoded_signature.encode('utf-8'))
-        # verify the signature
-        if not public_key.verify(message.encode("utf8"), decoded_signature):
-            print('Signature verification failed')
-            return False
-        print('Signature successfully verified')
-        # since we passed the verification, we can now safely
-        # use the unverified claims
-        claims = jwt.get_unverified_claims(token)
-
-        # claims = jwt.decode(token, algorithms=['ES256'], options={"verify_signature": False})
-        return claims
+        if st.session_state.config.JWKS_CLIENT:
+            signing_key = st.session_state.config.JWKS_CLIENT.get_signing_key_from_jwt(token)
+            claims = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=st.session_state.config.COGNITO_CLIENT_ID,
+                options={"verify_exp": True}
+            )
+            return claims
+        return None
     except jwt.DecodeError:
         print('error')
         return None
@@ -79,14 +57,13 @@ def is_token_expired(token):
 
 def get_info_from_amz_header(amz_header):
     try:
+        # # since ALB does Cognito Hosted UI verification, we can safely
+        # # use the unverified claims
         payload = jwt.decode(amz_header, algorithms=['ES256'], options={"verify_signature": False})
-        # st.write('USER', payload)
-        #print(payload)
         return payload
     except jwt.DecodeError:
         print('error')
         return None
-
 
 def get_tokens(auth_code):
     """Exchange auth code for tokens."""
@@ -194,7 +171,7 @@ def authenticate_user():
         refresh_token_value = st.session_state.auth_result['refresh_token']
 
         # Check if tokens are expired and refresh if necessary
-        if is_token_expired(id_token) or is_token_expired(access_token):
+        if is_token_expired(id_token):
             new_tokens = refresh_token(refresh_token_value)
             if 'id_token' in new_tokens and 'access_token' in new_tokens:
                 st.session_state.auth_result.update(new_tokens)
