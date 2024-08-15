@@ -1,5 +1,7 @@
 import os
 import hashlib
+import random
+import string
 from aws_cdk import (
     NestedStack,
     Duration,
@@ -176,11 +178,15 @@ class BedrockShoppingAgentStack(NestedStack):
             ]
         )
 
+        # Create new alias name on each deployment to create new version of agent
+        random_alias_string =  ''.join(random.choices(string.ascii_uppercase +
+							string.digits, k=6))
+
         # Create Agent Alias
         alias = bedrock.CfnAgentAlias(
             self, "ShoppingAgentPRODAlias",
             agent_id=agent.attr_agent_id,
-            agent_alias_name=f"PROD",
+            agent_alias_name=f"prod-{random_alias_string}",
             description="Alias for production agent invocation",
             tags=config.bedrock_agent_tags
         )
