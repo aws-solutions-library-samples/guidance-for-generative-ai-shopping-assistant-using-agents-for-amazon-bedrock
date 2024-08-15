@@ -11,11 +11,11 @@ from aws_cdk import (
     aws_elasticloadbalancingv2 as elb,
     aws_elasticloadbalancingv2_actions as elb_actions,
     aws_ecr_assets as ecr_assets,
-    custom_resources as cr,
     aws_certificatemanager as acm,
     aws_route53 as route53,
     aws_route53_targets as targets,
     aws_ssm as ssm,
+    aws_secretsmanager as secretsmanager,
     Duration,
     RemovalPolicy,
     CfnOutput
@@ -35,8 +35,23 @@ class EcsAppStack(NestedStack):
 
         random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
 
+
         # Create VPC
         vpc = ec2.Vpc(self, f"{app_name}-vpc", max_azs=2)
+
+        # Add VPC Flow Logs with retention
+        vpc_flow_log_group = logs.LogGroup(
+            self, "VPCFlowLogGroup",
+            log_group_name = f"/aws/vpc/flowlogs/{app_name}-cluster",
+            retention=logs.RetentionDays.ONE_MONTH,
+            removal_policy=RemovalPolicy.DESTROY
+        )
+
+        ec2.FlowLog(self, "VPCFlowLog",
+            resource_type=ec2.FlowLogResourceType.from_vpc(vpc),
+            destination=ec2.FlowLogDestination.to_cloud_watch_logs(vpc_flow_log_group)
+        )
+
         # Create ECS Cluster
         cluster = ecs.Cluster(self, f"{app_name}-cluster", vpc=vpc, cluster_name=f"{app_name}-{self.region}-cluster")
 
@@ -48,9 +63,16 @@ class EcsAppStack(NestedStack):
             role_name=f"{app_name}-{random_hash}-task-role",
         )
 
+        # Grant the ECS Task permission to read app parameters from SSM Parameter store
         task_role.add_to_policy(iam.PolicyStatement(
             actions=["ssm:GetParameter"],
             resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/*"]
+        ))
+
+        # Grant the ECS Task permission to read app secrets from Secrets Store Manager
+        task_role.add_to_policy(iam.PolicyStatement(
+            actions=["secretsmanager:GetSecretValue"],
+            resources=[f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:{app_name}/*"]
         ))
 
         # Add permissions to invoke the specific Bedrock agent 
@@ -227,9 +249,15 @@ class EcsAppStack(NestedStack):
                 "API_URL": ecs.Secret.from_ssm_parameter(
                     ssm.StringParameter.from_string_parameter_attributes(
                         self, "API_URL",
-                        parameter_name= config.apigateway_url_param,
+                        parameter_name= config.product_service_url_param,
                         version=1,
                         simple_name=False
+                    )
+                ),
+                "API_KEY": ecs.Secret.from_secrets_manager(
+                    secretsmanager.Secret.from_secret_name_v2(
+                        self, "API_KEY",
+                        secret_name= config.product_service_apikey_secret
                     )
                 ),
                 "SHOPPING_AGENT_ID": ecs.Secret.from_ssm_parameter(

@@ -1,13 +1,16 @@
 import os
 import hashlib
+import json
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
     aws_s3_deployment as s3deploy,
     aws_lambda as lambda_,
+    aws_logs as logs,
     aws_apigateway as apigw,
     aws_iam as iam,
     aws_ssm as ssm,
+    aws_secretsmanager as secretsmanager,
     CfnOutput,
     RemovalPolicy,
     Duration
@@ -50,7 +53,7 @@ class ProductServiceStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com")
         )
 
-        # Grant the Lambda function permission to read from SSM Parameter Store
+        # Grant the Lambda function permission to read app parameters from SSM Parameter Store
         lambda_role.add_to_policy(iam.PolicyStatement(
             actions=["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"],
             resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/*"]
@@ -89,17 +92,69 @@ class ProductServiceStack(Stack):
         # Grant read access to S3 Bucket
         self.app_data_bucket.grant_read(product_service_lambda)
 
+        # Create a CloudWatch log group for API Gateway
+        api_log_group = logs.LogGroup(self, f"{app_name}-api-logs",
+            log_group_name=f"/aws/apigateway/{app_name}-logs",
+            retention=logs.RetentionDays.ONE_MONTH,  
+            removal_policy=RemovalPolicy.DESTROY
+        )
+
         # Create an API Gateway
         api = apigw.RestApi(
             self, f"{app_name}Api",
             rest_api_name=f"{app_name}-api",
             description=f"This API serves {app_name} functionalities",
+            cloud_watch_role  = True,
+            cloud_watch_role_removal_policy = RemovalPolicy.DESTROY, 
+            deploy_options=apigw.StageOptions(
+                stage_name="prod",  
+                logging_level=apigw.MethodLoggingLevel.INFO,  
+                data_trace_enabled=True,
+                access_log_destination=apigw.LogGroupLogDestination(api_log_group),
+                access_log_format=apigw.AccessLogFormat.clf()  
+            ),
             default_cors_preflight_options=apigw.CorsOptions(
                 allow_origins=['GET', 'OPTIONS'],
                 allow_methods=apigw.Cors.ALL_METHODS,
                 allow_headers=["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key"],
                 max_age=Duration.days(1)
             )
+        )
+
+        # Store the API Key in Secrets Manager
+        self.api_key_secret = secretsmanager.Secret(self, f"{app_name}-product-service-api-key-secret",
+            secret_name=config.product_service_apikey_secret,
+            description=f"API Key for {app_name}",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                secret_string_template=json.dumps({"api_key": f"{app_name}-product-service-api-key"}),
+                generate_string_key="api_key"
+            )
+        )
+
+        # Create an API Key
+        api_key = api.add_api_key(f"{app_name}-product-service-api-key",
+            api_key_name=f"{app_name}-product-service-api-key",
+            value= self.api_key_secret.secret_value.unsafe_unwrap()
+        )
+
+        # Create a usage plan
+        plan = api.add_usage_plan(f"{app_name}-usage-plan",
+            name=f"{app_name}-usage-plan",
+            throttle=apigw.ThrottleSettings(
+                rate_limit=10,
+                burst_limit=2
+            )
+        )
+        
+        api_key.node.add_dependency( self.api_key_secret)
+        plan.node.add_dependency(api_key)
+
+        # Associate the API Key with the usage plan
+        plan.add_api_key(api_key)
+
+        # Add the API to the usage plan
+        plan.add_api_stage(
+            stage=api.deployment_stage
         )
 
         # Create API Gateway resources and methods
@@ -112,7 +167,8 @@ class ProductServiceStack(Stack):
             apigw.LambdaIntegration(
                 product_service_lambda,
                 proxy=True  # Enable proxy integration for request passthrough
-            )
+            ),
+            api_key_required=True
         )
 
         # GET /products/featured
@@ -122,7 +178,8 @@ class ProductServiceStack(Stack):
             apigw.LambdaIntegration(
                 product_service_lambda,
                 proxy=True  # Enable proxy integration for request passthrough
-            )
+            ),
+            api_key_required=True
         )
 
         # Grant API Gateway permission to invoke the Lambda function
@@ -131,7 +188,7 @@ class ProductServiceStack(Stack):
         # Store the API URL in SSM Parameter Store
         ssm.StringParameter(
             self, f"{app_name}ApiGWUrl",
-            parameter_name=config.apigateway_url_param,
+            parameter_name=config.product_service_url_param,
             string_value=api.url
         )
 
@@ -150,3 +207,8 @@ class ProductServiceStack(Stack):
             description="Name of the S3 bucket containing app data including products",
             export_name=f"{app_name}-data-bucket-name"
         )
+
+        # Output the Secret ARN
+        CfnOutput(self, "ProductServiceApiKeySecretArn", 
+                  value= self.api_key_secret.secret_arn, 
+                  description="Secret ARN for Product Service API Key")
