@@ -35,7 +35,7 @@ def main():
 
         """)    
     with col2:
-        st.image("assets/images/shopping_agent.png", caption="AI Shopping Assistant")
+        st.image("assets/images/Shopping_Agent.png", caption="AI Shopping Assistant")
 
 
     is_authenticated = authenticate_user()
