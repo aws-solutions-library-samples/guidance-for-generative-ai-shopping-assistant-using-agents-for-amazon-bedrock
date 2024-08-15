@@ -21,7 +21,7 @@ class S3CloudFrontStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, cloudfront_url_param: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode()).hexdigest()[:8]
         self.app_name= app_name
 
         # Create S3 bucket
@@ -30,7 +30,7 @@ class S3CloudFrontStack(Stack):
             f"{app_name}-bucket",
             removal_policy=RemovalPolicy.DESTROY, # RETAIN for production to avoid deletion of bucket 
             auto_delete_objects = True, # Disable for production to avoid deletion of bucket when it is not empty
-            bucket_name= f"{app_name}-{self.region}-{random_hash}"
+            bucket_name= f"{app_name}-{self.region}-{unique_string}"
         )
 
         # CloudFront Origin Access Identity
@@ -50,7 +50,7 @@ class S3CloudFrontStack(Stack):
             removal_policy=RemovalPolicy.DESTROY, 
             auto_delete_objects = True, # Disable for production to avoid deletion of bucket when it is not empty
             object_ownership=s3.ObjectOwnership.OBJECT_WRITER,
-            bucket_name= f"{app_name}-{self.region}-{random_hash}-logs-bucket",  
+            bucket_name= f"{app_name}-{self.region}-{unique_string}-logs-bucket",  
         )
 
         bucket_origin=origins.S3Origin(self.bucket, origin_access_identity=oai)

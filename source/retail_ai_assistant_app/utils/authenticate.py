@@ -1,5 +1,4 @@
 # auth.py
-import os
 import base64
 from utils.config import Config
 from dotenv import load_dotenv
@@ -7,7 +6,8 @@ from datetime import datetime, timezone
 import requests
 import urllib.parse
 import streamlit as st
-import jwt
+from jose import jwk, jwt
+from jose.utils import base64url_decode
 
 def initialize_session_vars():
     """Initialize Streamlit session state variables."""
@@ -35,10 +35,37 @@ def reset_session_state():
 def decode_jwt(token):
     """Decode JWT token."""
     try:
-        payload = jwt.decode(token, algorithms=['ES256'], options={"verify_signature": False})
-        # st.write('USER', payload)
-        #print(payload)
-        return payload
+        # get the kid from the headers prior to verification
+        headers = jwt.get_unverified_headers(token)
+        kid = headers['kid']
+        # search for the kid in the downloaded public keys
+        key_index = -1
+        keys = st.session_state.config.JWT_KEYS
+        for i in range(len(keys)):
+            if kid == keys[i]['kid']:
+                key_index = i
+                break
+        if key_index == -1:
+            print('Public key not found in jwks.json')
+            return False
+        # construct the public key
+        public_key = jwk.construct(keys[key_index])
+        # get the last two sections of the token,
+        # message and signature (encoded in base64)
+        message, encoded_signature = str(token).rsplit('.', 1)
+        # decode the signature
+        decoded_signature = base64url_decode(encoded_signature.encode('utf-8'))
+        # verify the signature
+        if not public_key.verify(message.encode("utf8"), decoded_signature):
+            print('Signature verification failed')
+            return False
+        print('Signature successfully verified')
+        # since we passed the verification, we can now safely
+        # use the unverified claims
+        claims = jwt.get_unverified_claims(token)
+
+        # claims = jwt.decode(token, algorithms=['ES256'], options={"verify_signature": False})
+        return claims
     except jwt.DecodeError:
         print('error')
         return None

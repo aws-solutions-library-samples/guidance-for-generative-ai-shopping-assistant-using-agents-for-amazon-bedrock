@@ -1,5 +1,6 @@
 # config.py
 import os
+import json
 import boto3
 import requests
 from dotenv import load_dotenv
@@ -9,6 +10,7 @@ class Config:
         load_dotenv()
 
         self.COGNITO_DOMAIN = os.environ.get("USER_POOL_DOMAIN","")
+        self.COGNITO_POOL_ID = os.environ.get("USER_POOL_ID","")
         self.COGNITO_CLIENT_ID = os.environ.get("USER_POOL_CLIENT_ID","")
         self.COGNITO_CLIENT_SECRET = os.environ.get("USER_POOL_CLIENT_SECRET","")
         self.REDIRECT_URI = os.environ.get("REDIRECT_URI", None)
@@ -19,6 +21,7 @@ class Config:
         self.AWS_ACCOUNT_ID, self.AWS_REGION, self.SESSION = self.get_aws_env_values()
         self.MODEL_INPUT_TOKEN_PRICE = 0.003 # Price per 1000 tokens
         self.MODEL_OUTPUT_TOKEN_PRICE = 0.015 # Price per 1000 tokens
+        self.JWT_KEYS = self.get_jwt_keys()
 
     
     def get_aws_env_values(self):
@@ -28,6 +31,7 @@ class Config:
 
         credentials_relative_uri = os.environ.get('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI','')
         sessionToken = None
+        # This is internal container URL, not exposed anywhere
         credentials_url = f'http://169.254.170.2{credentials_relative_uri}'
         if credentials_relative_uri != '':
             response = requests.get(credentials_url)
@@ -54,3 +58,8 @@ class Config:
         return AWS_ACCOUNT_ID, AWS_REGION, SESSION
 
         
+    def get_jwt_keys(self):
+        keys_url = 'https://cognito-idp.{}.amazonaws.com/{}/.well-known/jwks.json'.format(self.AWS_REGION, self.COGNITO_POOL_ID)
+        response = requests.get(keys_url).json()
+        keys = response['keys']
+        return keys
