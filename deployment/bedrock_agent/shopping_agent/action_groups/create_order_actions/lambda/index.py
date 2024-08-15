@@ -64,7 +64,7 @@ def handler(event, context):
     
     # Get API Gateway params from environment variable or SSM Parameter Store
     apigateway_url =  os.environ.get('API_URL', get_ssm_parameter(os.environ.get('API_URL_PARAM')))
-    api_key =  os.environ.get('API_URL', get_ssm_parameter(os.environ.get('API_KEY_SECRET_NAME')))
+    api_key =  os.environ.get('API_URL', get_secret(os.environ.get('API_KEY_SECRET_NAME')))
 
     if api_path == "/orders" and http_method == "POST":
         body = create_order(event)

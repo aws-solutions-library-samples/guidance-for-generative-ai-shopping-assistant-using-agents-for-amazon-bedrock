@@ -24,7 +24,7 @@ class RetailShoppingAgentStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        self.random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        self.unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode()).hexdigest()[:8]
 
         # Copy products.json file to KB folder for upload to S3
         source_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'products.json')
@@ -34,7 +34,7 @@ class RetailShoppingAgentStack(Stack):
         # Create S3 bucket for Bedrock knowledge base data source
         data_source_bucket = s3.Bucket(
             self, "KnowledgeBaseS3DataSourceBucket",
-            bucket_name=f"{app_name}-{self.region}-{self.random_hash}-kb",
+            bucket_name=f"{app_name}-{self.region}-{self.unique_string}-kb",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
         )
@@ -105,7 +105,7 @@ class RetailShoppingAgentStack(Stack):
         # Create Lambda function to process product catalog
         lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_catalog_and_sync_kb")
         # Create a unique name for the lambda role
-        lambda_role_name = f"{self.random_hash}-upload-product-catalog-role"
+        lambda_role_name = f"{self.unique_string}-upload-product-catalog-role"
 
         # Create the IAM role for the Lambda function
         lambda_role = iam.Role(

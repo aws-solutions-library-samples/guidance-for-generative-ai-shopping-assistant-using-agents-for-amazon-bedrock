@@ -25,7 +25,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         super().__init__(scope, construct_id, **kwargs)
 
         self.app_name= app_name
-        self.random_hash = hashlib.sha256(f"{self.app_name}-{self.region}".encode()).hexdigest()[:8]
+        self.unique_string = hashlib.sha256(f"{self.app_name}-{self.region}".encode()).hexdigest()[:8]
 
         # Vector Configurations for Knowledge Base and Amazon OpenSearch Serverless vector store
         index_name = config.product_vector_index_name
@@ -38,7 +38,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         # Create the IAM role for Bedrock Knowledge Base
         self.product_knowledge_base_role = iam.Role(
             self, "BedrockKnowledgeBaseRole",
-            role_name=f"{self.app_name}-{self.random_hash}-product-kb-role",
+            role_name=f"{self.app_name}-{self.unique_string}-product-kb-role",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
             path="/service-role/",
             description="IAM role for Bedrock Product Knowledge Base"
@@ -155,7 +155,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         # Create data access policy for the collection
         data_access_policy = opensearchserverless.CfnAccessPolicy(
             self, f"CollectionDataAccessPolicy-{index_name}",
-            name=f"{index_name}-kb-{self.random_hash}",
+            name=f"{index_name}-kb-{self.unique_string}",
             description="Data access policy for Amazon Bedrock Knowledge Base collection",
             policy=json.dumps([{
                 "Description": "Allow access to the collection and Indexes",
