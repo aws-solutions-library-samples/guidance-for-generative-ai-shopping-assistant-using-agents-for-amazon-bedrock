@@ -178,7 +178,7 @@ class BedrockShoppingAgentStack(NestedStack):
             ]
         )
 
-        # Create new alias name on each deployment to create new version of agent
+        #Create new alias name on each deployment to create new version of agent
         random_alias_string =  ''.join(random.choices(string.ascii_uppercase +
 							string.digits, k=6))
 
