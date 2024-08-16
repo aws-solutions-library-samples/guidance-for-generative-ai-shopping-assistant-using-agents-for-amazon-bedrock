@@ -18,7 +18,7 @@ class CognitoStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, application_dns_name: str = None, alb_dns_name : str =None, **kwargs)  -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-
+        unique_string = hashlib.md5(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
         self.default_user_email=config.default_user_email if hasattr(config, 'default_user_email') else None
         self.default_user_name=config.default_user_name if hasattr(config, 'default_user_name') else None
         self.default_temp_password=config.default_temp_password if hasattr(config, 'default_temp_password') else None
@@ -45,7 +45,7 @@ class CognitoStack(NestedStack):
         self.user_pool_domain = self.user_pool.add_domain(
             f"{app_name}-user-pool-domain",
             cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"{app_name}-{self.region}-domain"
+                domain_prefix=f"{app_name}-{self.region}-{unique_string}-domain"
             )
         )
 

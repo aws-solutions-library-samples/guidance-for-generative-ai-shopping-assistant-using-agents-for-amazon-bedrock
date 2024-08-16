@@ -20,12 +20,10 @@
 
 
 ## Overview
-This Guidance demonstrates how to create powerful, generative AI-driven shopping assistant that enhances customer experience and drives sales through context-aware, AI-powered interactions. The solution utilizes [Agents for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html) to orchestrate various functions like personalized and related product recommendations, dynamic contextual product comparisons, cart management, and automated order & email confirmation. The agent seamlessly integrates with existing company systems and data securely and minimizes the time and complexity needed for building sophisticated LLM (Large Language Model) Agents. 
+This Guidance demonstrates how to create powerful, generative AI-driven shopping assistant that enhances customer experience and drives sales through context-aware, AI-powered interactions. The solution offers features like personalized and related product recommendations, dynamic contextual product comparisons, seamless cart management, and automated order & email confirmation. It seamlessly integrates with your existing company systems and data securely and minimizes the time and complexity needed for building sophisticated LLM (Large Language Model) Agents. 
 
 ### Solution Overview
-This Guidance deploys a Streamlit-based Python web application on Amazon ECS Fargate, which calls the [Amazon Bedrock API](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) for natural language conversations. The Shopping Agent is built using Agents for Amazon Bedrock which utilizes Anthropic's Claude 3 Sonnet model to interpret user queries and orchestrate multi-step tasks for efficient shopping experience. 
-
-To assist customers in finding relevant products, the Shopping Agent is integrated with a [Knowledges Bases for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-bases.html), which embeds product catalog details from Amazon S3 and stores them in [Amazon OpenSearch Serverless](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/serverless.html) for vector search. Additionally, the Shopping Agent includes an Action Group that utilizes AWS Lambda function with OpenAPI Schema to manage API operations such as order creation, inventory checks, and sending email confirmations. 
+This Guidance deploys a Streamlit Python web application on Amazon ECS Fargate, which calls the [Amazon Bedrock Agent API](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) for natural language conversations. The Shopping Agent is built using [Agents for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html) which utilizes Anthropic's Claude 3 Sonnet model to interpret user queries. The agent orchestrates multi-step tasks for finding relevant products using [Knowledges Bases for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-bases.html) and place orders using Action Group with AWS Lambda function to manage API operations such as order creation, inventory checks, and sending email confirmations. 
 
 The Solution also implements various techniques for minimizing LLM Hallucinations:
 - Clear & structured step-by-step instructions to LLM for performing specific tasks
@@ -36,7 +34,29 @@ The Solution also implements various techniques for minimizing LLM Hallucination
 
 ### Architecture
 
-This section will have architecture diagram and steps from Solution Guidance.
+ ![architecture_01_solution_guidance](assets/images/architecture_01_solution_guidance.png)
+
+ 1. Create an application layer using Streamlit, AWS Fargate for hosting serverless containerized applications, Amazon Elastic Container Registry (Amazon ECR) for managing container images, Elastic Load Balancing (ELB) for traffic distribution, Amazon Route 53 for Domain Name System (DNS), and Amazon Cognito for authentication.
+ 
+ 2. Upload the Static Assets using Amazon Simple Storage Service (Amazon S3) to store the product catalog images. For content distribution, create an Amazon CloudFront distribution.
+ 
+ 3. Create the Shopping Agent using Agents for Amazon Bedrock. Select Amazon Bedrock Foundation Model (FM) Anthropic Claude 3 Sonnet (or larger FM from Anthropic with the minimum version being Anthropic Claude 3 Sonnet) and provide clear instructions for the agent to assist in finding and purchasing products.
+ 
+ 4. Create and associate Product Knowledge Base to the agent using Knowledge Bases for Amazon Bedrock to enable product search with Amazon S3 as data source, optimal chunking & parsing configuration, text embeddings model for embedding product documents uploaded to S3 and Amazon OpenSearch Serverless for vector search.
+ 
+ 5. Create Order Action Group for the agent using AWS Lambda function & OpenAPI schema to manage API operations such as order creation, inventory checks, and send email confirmation.
+ 
+ 6. Using Advanced prompts for the agent, override the default template for Orchestration prompt to configure the formatting template & instructions for email confirmation and output response.
+ 
+ 7. A user provides natural language queries to search a product or place an order through the application interface.
+ 
+ 8. The user input is interpreted by the agent using conversation history, agent instructions and configuration, as well as the underlying Amazon Bedrock foundation model (FM).
+ 
+ 9. During orchestration, the agent orchestrates multi-step tasks required for finding relevant products using the Product Knowledge Base or placing orders using Order Action Group. It also formats the email and output response using the templates provided in the Orchestration prompt.
+ 
+ 10. The agent sends back a list of relevant products found in product catalog search, and order confirmation or ask customer for more details as final response.
+
+ 
 
 ### Cost
 
