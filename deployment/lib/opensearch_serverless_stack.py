@@ -14,7 +14,7 @@ class OpenSearchServerlessStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
         self.opensearch_collection_name = f"{app_name}-kb-{random_hash}"
         
         # Create network policy for the collection with public access

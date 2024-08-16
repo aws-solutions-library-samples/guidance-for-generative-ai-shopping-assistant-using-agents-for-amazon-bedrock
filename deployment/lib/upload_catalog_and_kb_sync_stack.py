@@ -16,7 +16,7 @@ class UploadCatalogAndKBSyncStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, data_source_bucket: s3.IBucket, knowledge_base_id: str, data_source_id: str, config: Config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        self.unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode()).hexdigest()[:8]
+        self.unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode(), usedforsecurity=False).hexdigest()[:8]
 
         # Create Lambda function to process product catalog
         lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "upload_product_catalog_and_sync_kb")

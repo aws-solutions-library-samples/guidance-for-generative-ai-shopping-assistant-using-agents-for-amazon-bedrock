@@ -18,7 +18,7 @@ class CognitoStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, application_dns_name: str = None, alb_dns_name : str =None, **kwargs)  -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        unique_string = hashlib.md5(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        unique_string = hashlib.md5(f"{app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
         self.default_user_email=config.default_user_email if hasattr(config, 'default_user_email') else None
         self.default_user_name=config.default_user_name if hasattr(config, 'default_user_name') else None
         self.default_temp_password=config.default_temp_password if hasattr(config, 'default_temp_password') else None
@@ -162,7 +162,7 @@ class CognitoStack(NestedStack):
         self.user_pool.grant(create_user_lambda, "cognito-idp:AdminSetUserPassword")
 
         # Create a unique name for the custom resource role
-        unique_string = hashlib.md5(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        unique_string = hashlib.md5(f"{app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
         custom_resource_role_name = f"{app_name}-{unique_string}-create-user-cr-role"
 
         # Create a role for the custom resource

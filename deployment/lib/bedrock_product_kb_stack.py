@@ -25,7 +25,7 @@ class BedrockProductKnowledgeBaseStack(NestedStack):
         super().__init__(scope, construct_id, **kwargs)
 
         self.app_name= app_name
-        self.unique_string = hashlib.sha256(f"{self.app_name}-{self.region}".encode()).hexdigest()[:8]
+        self.unique_string = hashlib.sha256(f"{self.app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
 
         # Vector Configurations for Knowledge Base and Amazon OpenSearch Serverless vector store
         index_name = config.product_vector_index_name

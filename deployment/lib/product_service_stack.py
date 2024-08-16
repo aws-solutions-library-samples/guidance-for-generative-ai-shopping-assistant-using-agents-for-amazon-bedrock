@@ -25,7 +25,7 @@ class ProductServiceStack(Stack):
 
         # Path to your lambda function code
         lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "..", "source", "product_service")
-        unique_string = hashlib.md5(f"{app_name}-{self.region}-{self.account}".encode()).hexdigest()[:8]
+        unique_string = hashlib.md5(f"{app_name}-{self.region}-{self.account}".encode(), usedforsecurity=False).hexdigest()[:8]
 
         # Create S3 bucket for storing application data
         self.app_data_bucket = s3.Bucket(

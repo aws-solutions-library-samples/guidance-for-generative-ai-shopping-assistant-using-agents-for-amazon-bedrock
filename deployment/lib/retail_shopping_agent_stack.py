@@ -19,7 +19,7 @@ class RetailShoppingAgentStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        self.unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode()).hexdigest()[:8]
+        self.unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode(), usedforsecurity=False).hexdigest()[:8]
 
         # Copy products.json file to KB folder for upload to S3
         source_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'products.json')
