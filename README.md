@@ -209,13 +209,13 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
      ```
 
 9. **CDK Deploy Stack Summary**
-    - The cdk will deploy the following Parent Stacks:
-      - **S3CloudFrontStack**: Sets up Amazon CloudFront distribution and Amazon S3 bucket for image hosting.
-      - **AppStack**: Deploys the Retail AI assistant Streamlit app on ECS Fargate and enables Cognito Hosted UI authentication if Route53 Hosted Zone details are provided.
-      - **ProductServiceStack**: Creates the product service API using AWS Lamda and API Gateway.
-      - **ShoppingAgentStack**: Implements the Retail shopping agent functionality using Agents for Amazon Bedrock and Knowledgse Base with Amazon OpenSearch Serverless vector store.
-      - **UploadCatalogAndKBSyncStack**: Implements custom resource lambda to upload product details to Amazon S3 Data Source and Start Knowledge Base Ingestion Job.
-      - Dependencies are set to ensure proper resource creation order.
+- The cdk will deploy the following Parent Stacks:
+   - **S3CloudFrontStack**: Sets up Amazon CloudFront distribution and Amazon S3 bucket for image hosting.
+   - **AppStack**: Deploys the Retail AI assistant Streamlit app on ECS Fargate and enables Cognito Hosted UI authentication if Route53 Hosted Zone details are provided.
+   - **ProductServiceStack**: Creates the product service API using AWS Lamda and API Gateway.
+   - **ShoppingAgentStack**: Implements the Retail shopping agent functionality using Agents for Amazon Bedrock and Knowledgse Base with Amazon OpenSearch Serverless vector store.
+   - **UploadCatalogAndKBSyncStack**: Implements custom resource lambda to upload product details to Amazon S3 Data Source and Start Knowledge Base Ingestion Job.
+   - Dependencies are set to ensure proper resource creation order.
 
 ## Deployment Validation
 - Verify the deployment by checking the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation) for the status of all stacks.
