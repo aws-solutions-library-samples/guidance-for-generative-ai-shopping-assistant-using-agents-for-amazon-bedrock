@@ -135,7 +135,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
    - Create and activate a Python virtual environment:
      ```bash
      python3 -m venv venv # Or use `python -m venv venv`
-     source .venv/bin/activate  # On Windows, use `.venv\Scripts\activate`
+     source venv/bin/activate  # On Windows Git Bash, use `source venv/Scripts/activate`
      ```
 
 3. **Install Dependencies**
@@ -172,7 +172,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
      HOSTED_ZONE_NAME = "your-route53-hosted-zone-domain-name"
      HOSTED_ZONE_ID = "your-route53-hosted-zone-id"
      ```
-   Replace `your-route53-hosted-zone-domain-name` and `yyour-route53-hosted-zone-id` with your actual Amazon Route 53 Hosted Zone name and ID.
+   Replace `your-route53-hosted-zone-domain-name` and `your-route53-hosted-zone-id` with your actual Amazon Route 53 Hosted Zone name and ID.
 
 7. **Ensure Docker is Running**
    - Verify [Docker](https://docs.docker.com/get-docker/) is installed and running on your local machine:
@@ -274,7 +274,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 
    ![run_guidance_11_agent_session_state_results](assets/images/run_guidance_11_agent_session_state_results.png)
 
-   - Try changing the User Persona with "gender:M" by naviagting back to `Agent Session State` tab and search again to see the updated results.
+   - Try changing the User Persona with "gender:M" by navigating back to `Agent Session State` tab and search again to see the updated results.
 
    **NOTE**: *The products in  search result may differ with each query due to default number of documents returned by Knowledge Base. See [Next Steps](#next-steps) section for more details.*
 
@@ -283,7 +283,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 - These traces give you visibility into the agent’s reasoning on why and how it performs the tasks step by step. 
 
 8. **View Model Cost for current session**
-- Naviagte to `Model Cost` tab to view the total agent invoke request, input and ouput tokens with approximate model cost for the ongoing session. 
+- Navigate to `Model Cost` tab to view the total agent invoke request, input and output tokens with approximate model cost for the ongoing session. 
 - TThe cost is calculated using Bedrock Anthropic Claude 3 Sonnet model's on-demand pricing for the us-east-1 region as of August 2024. For the latest pricing information, please refer to the [Amazon Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
 
 
@@ -292,7 +292,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 Here are some next steps to consider for improving robustness and accuracy of the agent.
 - Customize the agent to your specific use case, data, and API requirements.
 
-- The agent's instructions and prompt templates are optimized for Anthropic Claude 3 Sonnet model. You can use the same agent model to generate new or updated instrcuctions.
+- The agent's instructions and prompt templates are optimized for Anthropic Claude 3 Sonnet model. You can use the same agent model to generate new or updated instructions.
 
 - Implement robust validation mechanisms for LLM response before presenting to the customer. 
 
@@ -300,7 +300,7 @@ Here are some next steps to consider for improving robustness and accuracy of th
 
 - Knowledge Bases for Amazon Bedrock returns up to five documents by default. Modify the [query configurations](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-config.html) of knowledge base for agent using the sessionState to increase number of products returned in search results. Alternatively, you can  embed all products using single document in S3 with optimal [chunking & parsing](https://community.aws/content/2jU5zpqh4cal0Lm47MBdRmKLLJ5/a-developer-s-guide-to-advanced-chunking-and-parsing-with-amazon-bedrock?lang=en) configuration. 
 
-- Continuosly monitor model performance and accuracy using [Model Evaluation for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation.html).
+- Continuously monitor model performance and accuracy using [Model Evaluation for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation.html).
 
 - Use [Advanced Prompts](https://docs.aws.amazon.com/bedrock/latest/userguide/advanced-prompts.html) to further enhance the agent's accuracy by modifying default prompt templates for different processing steps.
 
