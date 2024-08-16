@@ -109,14 +109,14 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 **AWS resources required:**
 - Amazon Elastic Container Service (ECS)
-- Amazon Cognito and Amazon Route 53 DNS record (reuired if you want Cognito Hoseted UI authentication)
+- Amazon Cognito and Amazon Route 53 DNS record (required if you want Cognito Hosted UI authentication)
 - Amazon CloudFront
 - Amazon Simple Storage Service (S3)
 - Amazon API Gateway
 - AWS Lambda
 - Amazon OpenSearch Serverless
 - Agents and Knowledge Base for Amazon Bedrock
--  IAM user or role with permissions to create resources in the target AWS account and region to be used for CDK deployment.
+- IAM user or role with permissions to create resources in the target AWS account and region to be used for CDK deployment.
 
 ### Amazon Bedrock Model Access
    - Request access for Anthropic's Claude 3 Sonnet, Claude 3 Haiku and Amazon'a Titan embedding models from the AWS Management Console.
