@@ -11,10 +11,10 @@
 3. [Deployment Steps](#deployment-steps)
 4. [Deployment Validation](#deployment-validation)
 5. [Running the Guidance](#running-the-guidance)
-6. [Next Steps](#next-steps)
-7. [Cleanup](#cleanup)
-8. [FAQ, known issues, additional considerations, and limitations](#faq-known-issues-additional-considerations-and-limitations)
-9. [Testing app locally on your machine](#testing-app-locally-on-your-machine)
+6. [Testing app locally on your machine](#testing-app-locally-on-your-machine)
+7. [Next Steps](#next-steps)
+8. [Cleanup](#cleanup)
+9. [FAQ, known issues, additional considerations, and limitations](#faq-known-issues-additional-considerations-and-limitations)
 10. [Notices](#notices)
 11. [Authors](#authors)
 
@@ -195,7 +195,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
    Replace `your-route53-hosted-zone-domain-name` and `your-route53-hosted-zone-id` with your actual Amazon Route 53 Hosted Zone name and ID.
 
 7. **Ensure Docker is Running**
-   - Verify [Docker](https://docs.docker.com/get-docker/) is installed and running on your local machine:
+   - Verify [Docker](https://docs.docker.com/get-docker/) is installed and running on your local machine. On Windows, ensure you are running Linux containers:
      ```bash
      docker info
      ```
@@ -306,6 +306,48 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
 - Navigate to `Model Cost` tab to view the total agent invoke request, input and output tokens with approximate model cost for the ongoing session. 
 - TThe cost is calculated using Bedrock Anthropic Claude 3 Sonnet model's on-demand pricing for the us-east-1 region as of August 2024. For the latest pricing information, please refer to the [Amazon Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
 
+## Testing app locally on your machine
+
+To run the application locally, follow these steps:
+
+1. **Navigate to the Application Source Directory**
+   - Change your directory to the `source/retail_ai_assistant_app` folder where the application source code is located:
+     ```bash
+     cd source/retail_ai_assistant_app
+     ```
+
+2. **Install Python Requirements**
+   - Install the required packages listed in the `requirements.txt` file:
+     ```bash
+     pip install -r requirements.txt
+     ```
+
+3. **Copy and Configure the `.env` File**
+   - Copy the [source/.env.example](source/.env.example) file to create a new `.env` file inside `source/retail_ai_assistant_app` folder:
+
+     ```bash
+     cp .env.example .env
+     ```
+
+4. **Retrieve Values from AWS Systems Manager Parameter Store**
+   - Navigate to the `AWS Systems Manager Parameter Store` & `AWS Secrets Manage Store` using separate tabs in the AWS Management Console.
+   - Search for the following parameter store keys or secrets to fill out the corresponding values in your `.env` file.
+   - Note: `{app_name}` will be name of your app specified in [deployment/lib/config.py](deployment/lib/config.py).
+
+5. **Set AWS Region and Account ID**
+   - In the `.env` file, also set the following values:
+     - **AWS_REGION**: Your AWS account region
+     - **AWS_ACCOUNT_ID**: Your AWS account ID
+
+6. **Run the Application Locally**
+   - With the `.env` file configured, you can now start the application using Streamlit:
+     ```bash
+     streamlit run Home.py
+     ```
+   - This command will launch the application in your default web browser.
+
+7. **Expected Output**
+- Once the application is running, you should see the Streamlit interface open in your browser, allowing you to interact with the AI assistant.
 
 ## Next Steps
 
@@ -363,50 +405,6 @@ cdk destroy --all
 - **Cost Considerations**: Costs for Bedrock model are determined by the number of tokens processed. Use AWS Cost Explorer to track and optimize these expenses.
 
 For any feedback, questions, or suggestions, please use the issues tab under this repo.
-
-
-## Testing app locally on your machine
-
-To run the application locally, follow these steps:
-
-1. **Navigate to the Application Source Directory**
-   - Change your directory to the `source/retail_ai_assistant_app` folder where the application source code is located:
-     ```bash
-     cd source/retail_ai_assistant_app
-     ```
-
-2. **Install Python Requirements**
-   - Install the required packages listed in the `requirements.txt` file:
-     ```bash
-     pip install -r requirements.txt
-     ```
-
-3. **Copy and Configure the `.env` File**
-   - Copy the [source/.env.example](source/.env.example) file to create a new `.env` file inside `source/retail_ai_assistant_app` folder:
-
-     ```bash
-     cp .env.example .env
-     ```
-
-4. **Retrieve Values from AWS Systems Manager Parameter Store**
-   - Navigate to the `AWS Systems Manager Parameter Store` & `AWS Secrets Manage Store` using separate tabs in the AWS Management Console.
-   - Search for the following parameter store keys or secrets to fill out the corresponding values in your `.env` file.
-   - Note: `{app_name}` will be name of your app specified in [deployment/lib/config.py](deployment/lib/config.py).
-
-5. **Set AWS Region and Account ID**
-   - In the `.env` file, also set the following values:
-     - **AWS_REGION**: Your AWS account region
-     - **AWS_ACCOUNT_ID**: Your AWS account ID
-
-6. **Run the Application Locally**
-   - With the `.env` file configured, you can now start the application using Streamlit:
-     ```bash
-     streamlit run Home.py
-     ```
-   - This command will launch the application in your default web browser.
-
-7. **Expected Output**
-- Once the application is running, you should see the Streamlit interface open in your browser, allowing you to interact with the AI assistant.
 
 ## Notices
 
