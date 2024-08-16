@@ -21,7 +21,7 @@ class S3CloudFrontStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, cloudfront_url_param: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode()).hexdigest()[:8]
+        unique_string = hashlib.sha256(f"{app_name}-{self.region}-{self.account}".encode(), usedforsecurity=False).hexdigest()[:8]
         self.app_name= app_name
 
         # Create S3 bucket
@@ -114,7 +114,7 @@ class S3CloudFrontStack(Stack):
         self.bucket.grant_read_write(upload_images_lambda)
 
         # Create a unique name for the custom resource role
-        unique_string = hashlib.md5(f"{self.app_name}-{self.region}".encode()).hexdigest()[:8]
+        unique_string = hashlib.md5(f"{self.app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
         custom_resource_role_name = f"{self.app_name}-{unique_string}-upload-images-cr-role"
 
         # Create a role for the custom resource

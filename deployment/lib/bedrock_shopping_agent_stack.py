@@ -19,7 +19,7 @@ class BedrockShoppingAgentStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, product_kb_id, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
 
         shopping_agent_path = os.path.join(os.path.dirname(__file__), "..", "bedrock_agent", "shopping_agent")
 

@@ -12,7 +12,7 @@ class RetailAppAIAssistantStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, app_name: str, config: Config, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
-        random_hash = hashlib.sha256(f"{config.app_name}-{self.region}".encode()).hexdigest()[:8]
+        random_hash = hashlib.sha256(f"{config.app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
 
         self.application_dns_name = f"{app_name}.{config.domain_name}" if hasattr(config, 'domain_name') else None
         self.alb_dns_name = f"{app_name}-{random_hash}"

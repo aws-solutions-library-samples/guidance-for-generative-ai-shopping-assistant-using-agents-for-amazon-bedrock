@@ -33,7 +33,7 @@ class EcsAppStack(NestedStack):
         self.domain_name = config.domain_name if hasattr(config, 'domain_name') else None
         self.hosted_zone_id = config.hosted_zone_id if hasattr(config, 'hosted_zone_id') else None
 
-        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode()).hexdigest()[:8]
+        random_hash = hashlib.sha256(f"{app_name}-{self.region}".encode(), usedforsecurity=False).hexdigest()[:8]
 
 
         # Create VPC
