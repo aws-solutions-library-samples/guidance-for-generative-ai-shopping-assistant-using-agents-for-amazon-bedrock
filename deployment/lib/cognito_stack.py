@@ -19,6 +19,7 @@ class CognitoStack(NestedStack):
         super().__init__(scope, construct_id, **kwargs)
 
         unique_string = hashlib.md5(f"{app_name}-{self.region}-{self.account}".encode(), usedforsecurity=False).hexdigest()[:8]
+
         self.default_user_email=config.default_user_email if hasattr(config, 'default_user_email') else None
         self.default_user_name=config.default_user_name if hasattr(config, 'default_user_name') else None
         self.default_temp_password=config.default_temp_password if hasattr(config, 'default_temp_password') else None
