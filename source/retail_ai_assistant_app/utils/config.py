@@ -15,6 +15,8 @@ class Config:
         self.COGNITO_CLIENT_SECRET = os.environ.get("USER_POOL_CLIENT_SECRET","")
         self.REDIRECT_URI = os.environ.get("REDIRECT_URI", None)
         self.SHOPPING_AGENT_ALIAS_ID = os.environ.get("SHOPPING_AGENT_ALIAS_ID", "TSTALIASID")
+        self.PRODUCT_KNOWLEDGE_BASE_ID = os.environ.get("PRODUCT_KNOWLEDGE_BASE_ID")
+        self.NUMBER_OF_SEARCH_RESULTS = 5 # The number of documents to return from KB search for agent
         self.SHOPPING_AGENT_ID = os.environ.get("SHOPPING_AGENT_ID")
         self.API_URL = os.environ.get("API_URL")
         self.API_KEY = os.environ.get("API_KEY")
