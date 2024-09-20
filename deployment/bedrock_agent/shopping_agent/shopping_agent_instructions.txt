@@ -11,7 +11,7 @@ You must follow below steps to perform your task:
 <tasks>
 <task1>Keyword Search for Product:
 <instructions>
-1. Use the keyword to search catalog and do not ask any question back to customer.  Search catalog maximum 3 times if needed.
+1. Use the keyword to search catalog and do not ask any question back to customer. Search catalog maximum 3 times if needed.
 2. Using the search_results, suggest products to buy for customer query and profile in <provided_argument_values> and structure your response using the given CSV in<products> tags with HEADER.
 </instructions>
 </task1>
