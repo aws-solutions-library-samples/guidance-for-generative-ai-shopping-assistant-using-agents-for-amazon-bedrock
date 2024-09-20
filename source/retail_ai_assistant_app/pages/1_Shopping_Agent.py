@@ -318,7 +318,8 @@ def load_sample_prompts():
         st.button(text, key="prompt_5", on_click=add_prompt, args=(text,file_path,))
     with col6:
         text = 'Moving to new apartment'
-        st.button(text, key="prompt_6", on_click=add_prompt, args=(text,None,))
+        prompt = 'Furniture for moving to new apartment'
+        st.button(text, key="prompt_6", on_click=add_prompt, args=(prompt,None,))
     with col7:
         text = 'Gift for wedding anniversary'
         st.button(text, key="prompt_7", on_click=add_prompt, args=(text,None,))
@@ -729,6 +730,8 @@ def load_cost():
 
     st.markdown('### Model Cost for current Session')
     st.markdown (f"Total Agent Invoke Count: **{st.session_state.total_invoke_agent}**")
+    st.markdown(f"Price per 1,000 input tokens: **${st.session_state.config.MODEL_INPUT_TOKEN_PRICE}**")
+    st.markdown(f"Price per 1,000 output tokens: **${st.session_state.config.MODEL_OUTPUT_TOKEN_PRICE}**")
 
     st.markdown("""
         | Token Type      | Total Tokens | Cost [USD] |
@@ -743,6 +746,8 @@ def load_cost():
             output_token_cost=output_token_cost,
             total_cost=total_cost
         ))
+    
+    st.markdown (f"For latest model pricing in respective region, check [Amazon Bedrock pricing](https://aws.amazon.com/bedrock/pricing/)")
 
 def load_session():
     st.write(f"Session ID: {st.session_state.session_id}")

@@ -66,11 +66,12 @@ class BedrockAgent:
     def invoke_agent(self, agent_id, agent_alias_id, session_id, session_state, prompt, base64_image = None, end_session:bool = False):
         try:
             if base64_image:
-                output_text = self.invoke_claude_model("What's in my image", base64_image)
+                output_text = self.invoke_claude_model("Return only list of products in the image", base64_image)
                 if output_text:
                     prompt = prompt + "\n" + output_text
             
             # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-agent-runtime/client/invoke_agent.html
+            # print(session_state)
             response = self.bedrock_agent_runtime.invoke_agent(
                 agentId=agent_id,
                 agentAliasId=agent_alias_id,
