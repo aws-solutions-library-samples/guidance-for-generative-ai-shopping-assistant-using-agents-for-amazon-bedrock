@@ -36,25 +36,27 @@ The Solution also implements various techniques for minimizing LLM Hallucination
 
  ![architecture_01_solution_guidance](assets/images/architecture_01_solution_guidance.png)
 
- 1. Create an application layer using Streamlit, AWS Fargate for hosting serverless containerized applications, Amazon Elastic Container Registry (Amazon ECR) for managing container images, Elastic Load Balancing (ELB) for traffic distribution, Amazon Route 53 for Domain Name System (DNS), and Amazon Cognito for authentication.
+ 1. A user provides natural language queries to find products or place orders through the application interface.
  
- 2. Upload the Static Assets using Amazon Simple Storage Service (Amazon S3) to store the product catalog images. For content distribution, create an Amazon CloudFront distribution.
+ 2. The application is hosted using serverless containers on [AWS Fargate](https://aws-preview.aka.amazon.com/fargate/), [Amazon Elastic Container Registry](https://aws-preview.aka.amazon.com/ecr/) (Amazon ECR) for managing container images, [Elastic Load Balancing](https://aws-preview.aka.amazon.com/elasticloadbalancing/) (ELB) for traffic distribution, [Amazon Route 53](https://aws-preview.aka.amazon.com/route53/) for Domain Name System (DNS), and [Amazon Cognito](https://aws-preview.aka.amazon.com/cognito/) for authentication.
  
- 3. Create the Shopping Agent using Agents for Amazon Bedrock. Select Amazon Bedrock Foundation Model (FM) Anthropic Claude 3 Sonnet (or larger FM from Anthropic with the minimum version being Anthropic Claude 3 Sonnet) and provide clear instructions for the agent to assist in finding and purchasing products.
+ 3. Static assets such as product images are stored in [Amazon Simple Storage Service](https://aws-preview.aka.amazon.com/s3/) (Amazon S3) with [Amazon CloudFront](https://aws-preview.aka.amazon.com/cloudfront/) distribution to provide low latency content delivery for enhanced user experience.
  
- 4. Create and associate Product Knowledge Base to the agent using Knowledge Bases for Amazon Bedrock to enable product search with Amazon S3 as data source, optimal chunking & parsing configuration, text embeddings model for embedding product documents uploaded to S3 and Amazon OpenSearch Serverless for vector search.
+ 4. The user query is sent to [Amazon Bedrock Agent](https://aws.amazon.com/bedrock/agents/) using Amazon Bedrock API.
  
- 5. Create Order Action Group for the agent using AWS Lambda function & OpenAPI schema to manage API operations such as order creation, inventory checks, and send email confirmation.
+ 5. Amazon Bedrock Agents interprets user input using conversation history, agent instructions and other configurations, as well as the underlying Amazon Bedrock foundation model (FM) for contextual understanding of the user search request for accurate and relevant responses.
  
- 6. Using Advanced prompts for the agent, override the default template for Orchestration prompt to configure the formatting template & instructions for email confirmation and output response.
+ 6. Amazon Bedrock foundation model (FM) utilizes the given agent instructions including the role of the assistant, specific tasks, step-by-step instructions for completing tasks, and examples, to orchestrate actions for assisting user in finding and purchasing products.
  
- 7. A user provides natural language queries to search a product or place an order through the application interface.
+ 7. During orchestration, Amazon Bedrock Agents utilizes ReAct prompting with the Orchestration prompt to invoke relevant actions for finding products or placing orders.
  
- 8. The user input is interpreted by the agent using conversation history, agent instructions and configuration, as well as the underlying Amazon Bedrock foundation model (FM).
+ 8. To find relevant products from the catalog, [Knowledge Bases for Amazon Bedrock](https://aws-preview.aka.amazon.com/bedrock/knowledge-bases/) offers fully managed retrieval augmented generation (RAG) for Amazon Bedrock Agents. It uses product documents stored in Amazon S3 as Data Source for embedding product information and [Amazon OpenSearch Serverless](https://aws-preview.aka.amazon.com/opensearch-service/features/serverless/) for vector store and semantic search. 
  
- 9. During orchestration, the agent orchestrates multi-step tasks required for finding relevant products using the Product Knowledge Base or placing orders using Order Action Group. It also formats the email and output response using the templates provided in the Orchestration prompt.
+ 9. To manage API operations such as order creation, inventory checks, and sending email confirmations, Amazon Bedrock Agent, utilizes an Order action group built using [AWS Lambda](https://aws-preview.aka.amazon.com/lambda/) function & OpenAPI schema.
  
- 10. The agent sends back a list of relevant products found in product catalog search, and order confirmation or ask customer for more details as final response.
+ 10. Using Advanced prompts for Orchestration, Amazon Bedrock Agents is configured with templates for formatting email confirmations and output responses to users, ensuring clear and consistent communication.
+ 
+ 11. The Agents for Amazon Bedrock reasoning process continues until the agent finds relevant products, creates an order with email confirmation, or wants to request additional details from the customer. The Final answer is sent back to the application providing a seamless shopping experience for the user.
 
  
 
@@ -218,7 +220,7 @@ This Guidance uses aws-cdk. If you are using AWS CDK for the first time, please 
    - Dependencies are set to ensure proper resource creation order.
 
 ## Deployment Validation
-- Verify the deployment by checking the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation) for the status of all stacks.
+- Verify the deployment by checking the [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation) for the status of all stacks mentioned above in CDK Deploy Stack Summary.
 - Ensure all resources are created successfully in the specified cdk AWS region.
 - Verify Product catalog Knowledge Base was setup successfully:
    - Capture the Cloudformation output value for `ProductCatalog-KnowledgeBaseName` in `{app-name}ShoppingAgentStack`stack.
