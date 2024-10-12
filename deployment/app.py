@@ -25,7 +25,8 @@ def main():
         f"{config.app_name}S3CloudFrontStack", 
         app_name=config.app_name,
         cloudfront_url_param = config.cloudfront_url_param,
-        env=env
+        env=env,
+        description='Guidance for Generative AI Shopping Assistant using Agents for Amazon Bedrock (SO9539)'
     )
 
     # Create Product Service API with AWS Lambda and API Gateway
@@ -34,7 +35,8 @@ def main():
         f"{config.app_name}ProductServiceStack",
         app_name=config.app_name,
         config=config,
-        env=env
+        env=env,
+        description='Guidance for Generative AI Shopping Assistant using Agents for Amazon Bedrock (SO9539)'
     )
 
     # Create Cognito Authenticated Streamlit Web App on ECS Fargate
@@ -43,7 +45,8 @@ def main():
         f"{config.app_name}AppStack",
         app_name=config.app_name,
         config=config,
-        env=env
+        env=env,
+        description='Guidance for Generative AI Shopping Assistant using Agents for Amazon Bedrock (SO9539)'
     )
 
     # Create Bedrock Agent for Shopping Assistant with Knowledge Base and Action Group
@@ -52,7 +55,8 @@ def main():
         f"{config.app_name}ShoppingAgentStack",
         app_name=config.app_name,
         config=config,
-        env=env
+        env=env,
+        description='Guidance for Generative AI Shopping Assistant using Agents for Amazon Bedrock (SO9539)'
     )
 
     # Upload Product details to S3 bucket and start ingestion to Knowledge Base
@@ -64,7 +68,8 @@ def main():
         knowledge_base_id =shopping_agent_stack.knowledge_base_id,
         data_source_id =shopping_agent_stack.data_source_id,
         config=config,
-        env=env
+        env=env,
+        description='Guidance for Generative AI Shopping Assistant using Agents for Amazon Bedrock (SO9539)'
     )
 
     # Add dependency to product service for cloudfront stack to use cloudfront url 
